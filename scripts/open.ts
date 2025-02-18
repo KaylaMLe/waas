@@ -1,6 +1,6 @@
 import puppeteer from 'puppeteer';
 
-async function findDivWithLabel(url: string, label: string): Promise<boolean> {
+export async function findDivWithLabel(url: string, label: string): Promise<boolean> {
 	const browser = await puppeteer.launch({ headless: true }); // Runs in headless mode
 	const page = await browser.newPage();
 
@@ -24,15 +24,3 @@ async function findDivWithLabel(url: string, label: string): Promise<boolean> {
 		await browser.close();
 	}
 }
-
-// Example usage
-const url = 'https://account.ycombinator.com/?continue=https%3A%2F%2Fwww.workatastartup.com%2F';  // Replace with the actual URL
-const label = 'Username or email';
-
-findDivWithLabel(url, label).then(found => {
-	if (found) {
-		console.log('Success: Div found.');
-	} else {
-		console.log('Failure: Div not found.');
-	}
-});
