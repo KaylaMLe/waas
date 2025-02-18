@@ -1,1 +1,1 @@
-{"root":["./scripts/main.ts","./scripts/open.ts"],"version":"5.7.3"}
+{"root":["./main.ts","./scripts/open.ts","./scripts/parse.ts"],"version":"5.7.3"}

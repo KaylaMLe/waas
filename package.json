@@ -2,7 +2,7 @@
 	"type": "module",
 	"scripts": {
 		"build": "npx tsc --build",
-		"start": "node ./scripts/main.js"
+		"start": "node --env-file=.env ./main.js"
 	},
 	"dependencies": {
 		"@types/puppeteer": "^5.4.7",
