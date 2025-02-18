@@ -1,26 +1,22 @@
-import puppeteer from 'puppeteer';
+import puppeteer, { Page } from 'puppeteer';
 
-export async function findDivWithLabel(url: string, label: string): Promise<boolean> {
-	const browser = await puppeteer.launch({ headless: true }); // Runs in headless mode
+/**
+ * opens the specified URL in a headless browser and returns the page object
+ * 
+ * @param {string} url - the URL to open
+ * @returns {Promise<Page | null>} - a promise that resolves to the page object if successful, or null if an error occurs
+ */
+export async function openUrl(url: string): Promise<Page | null> {
+	const browser = await puppeteer.launch({ headless: true });
 	const page = await browser.newPage();
 
 	try {
 		console.log(`Opening ${url}...`);
 		await page.goto(url, { waitUntil: 'domcontentloaded' });
-
-		// Search for a div containing the label
-		const divExists = await page.evaluate((label) => {
-			const divs = Array.from(document.querySelectorAll('div'));
-			return divs.some(div => div.textContent?.trim() === label);
-		}, label);
-
-		console.log(divExists ? `✅ Found div with label: "${label}"` : `❌ No div found with label: "${label}"`);
-
-		return divExists;
+		return page;
 	} catch (error) {
-		console.error('Error:', error);
-		return false;
-	} finally {
+		console.error('⚠️ Error:', error);
 		await browser.close();
+		return null;
 	}
 }
