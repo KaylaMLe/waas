@@ -26,7 +26,31 @@ async function main() {
 			}
 		}));
 
-		const loginBtn = await findDivBtnByClass(pageHandler.pages[0], '.actions');
+		const loginBtn = await findDivBtnByClass(pageHandler.pages[0], 'actions');
+
+		// findDiveBtnByClass will return null and log an error if the button is not found
+		if (!loginBtn) {
+			return;
+		}
+
+		await loginBtn.click();
+		console.log('✅ Clicked the login button.');
+
+		await pageHandler.pages[0].waitForFunction(() =>
+			document.body.innerText.includes("We couldn't find a user with that username."),
+			{ timeout: 5000 } // Wait up to 5 seconds
+		);
+
+		// check for the error message
+		const errorMessageFound = await pageHandler.pages[0].evaluate(() =>
+			document.body.innerText.includes("We couldn't find a user with that username.")
+		);
+
+		if (errorMessageFound) {
+			console.log("❌ Error: We couldn't find a user with that username.");
+		} else {
+			console.log('✅ No error message found.');
+		}
 	} catch (error) {
 		console.error('⚠️ Error:', error);
 	} finally {

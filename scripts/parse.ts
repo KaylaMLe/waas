@@ -35,20 +35,27 @@ export async function findDivInputWithLabel(page: Page, label: string): Promise<
  * @param {string} className - the class name to search for
  * @returns {Promise<ElementHandle<node> | null>} - the button element in the div if found, null otherwise
  */
-export async function findDivBtnByClass(page: Page, className: string): Promise<ElementHandle<Node> | null> {
+export async function findDivBtnByClass(page: Page, className: string): Promise<ElementHandle<HTMLButtonElement> | null> {
 	try {
-		const btnElement = await page.evaluateHandle((className) => {
-			const divs = Array.from(document.querySelectorAll('div'));
-			const foundDiv = divs.find(div => div.className === className);
-			return foundDiv ? foundDiv.querySelector('button') : null;
-		}, className);
+		const foundDiv = await page.$(`div.${className}`);
+
+		if (foundDiv) {
+			console.log(`✅ Found div with class: "${className}"`);
+		} else {
+			console.log(`❌ No div with class: "${className}"`);
+			return null;
+		}
+
+		const btnElement = await foundDiv?.$('button');
 
 		if (btnElement) {
-			console.log(`✅ Found button element in div with class: "${className}"`);
+			console.log('✅ Found button element within div');
 		} else {
-			console.log(`❌ No button element found in div with class: "${className}"`);
+			console.log('❌ No button element found within div');
+			return null;
 		}
-		return btnElement.asElement();
+
+		return btnElement;
 	} catch (error) {
 		console.error('⚠️ Error:', error);
 		return null;
