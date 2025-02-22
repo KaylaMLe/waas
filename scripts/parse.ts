@@ -57,3 +57,20 @@ export async function findDivBtnByClass(page: Page, className: string): Promise<
 		return null;
 	}
 }
+
+/**
+ * Parses the page for all anchor tags with hrefs of the format "https://www.workatastartup.com/jobs/XXXX"
+ * where XXXX is a nonempty series of digits. Returns these links.
+ * 
+ * @param {Page} page - The Puppeteer page object to search within.
+ * @returns {Promise<string[]>} - A promise that resolves to an array of job links.
+ */
+export async function getAllJobLinks(page: Page): Promise<string[]> {
+	const jobLinks = await page.evaluate(() => {
+		const anchors = Array.from(document.querySelectorAll('a[href^="https://www.workatastartup.com/jobs/"]'));
+		return anchors
+			.map(anchor => anchor.getAttribute('href'));
+	});
+
+	return jobLinks as string[];
+}

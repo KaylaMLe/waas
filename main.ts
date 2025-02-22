@@ -1,16 +1,16 @@
 import { TimeoutError } from 'puppeteer';
 
 import { PageHandler } from './scripts/PageHandler.js';
-import { findDivBtnByClass, findInputById } from './scripts/parse.js';
-
-const url = 'https://account.ycombinator.com/?continue=https%3A%2F%2Fwww.workatastartup.com%2F';
-const ids = ['ycid-input', 'password-input'];
-const login = [process.env.YCUSER || 'foo', process.env.YCPSWD || 'bar'];
+import { findDivBtnByClass, findInputById, getAllJobLinks } from './scripts/parse.js';
 
 const pageHandler = new PageHandler();
 
 async function main(): Promise<void> {
-	const pageOpened = await pageHandler.openUrl(url);
+	const loginUrl = 'https://account.ycombinator.com/?continue=https%3A%2F%2Fwww.workatastartup.com%2F';
+	const ids = ['ycid-input', 'password-input'];
+	const login = [process.env.YCUSER || 'foo', process.env.YCPSWD || 'bar'];
+
+	const pageOpened = await pageHandler.openUrl(loginUrl);
 
 	if (!pageOpened) {
 		console.log('❌ Failure: Page not opened.');
@@ -64,6 +64,26 @@ async function main(): Promise<void> {
 		console.log('✅ Logged in');
 	} else {
 		console.log('❌ Login unsuccessful');
+		return;
+	}
+
+	console.log('🔵 Starting search for roles...');
+	pageHandler.closePage(0);
+	const searchUrl = process.env.SEARCH_URL || 'https://www.workatastartup.com/roles';
+	const searchPageOpened = await pageHandler.openUrl(searchUrl);
+
+	if (searchPageOpened) {
+		console.log('✅ Search page opened successfully.');
+	} else {
+		return;
+	}
+
+	const jobLinks = await getAllJobLinks(pageHandler.pages[0]);
+	if (jobLinks.length > 0) {
+		console.log('✅ Found job links:');
+		jobLinks.forEach(link => console.log(link));
+	} else {
+		console.log('❌ No job links found.');
 	}
 }
 
