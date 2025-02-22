@@ -46,7 +46,19 @@ export class PageHandler {
 		}
 	}
 
+	public async closePage(index: number): Promise<void> {
+		if (this.pages[index]) {
+			await this.pages[index].close();
+			this.pages.splice(index, 1);
+		}
+	}
+
 	public async closeBrowser() {
+		if (this.pages.length > 0) {
+			await Promise.all(this.pages.map(page => page.close()));
+			this.pages = [];
+		}
+
 		if (this.browser) {
 			await this.browser.close();
 			this.browser = null;
