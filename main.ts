@@ -2,6 +2,7 @@ import { TimeoutError } from 'puppeteer';
 
 import { PageHandler } from './scripts/PageHandler.js';
 import { findDivBtnByClass, findInputById, getAllJobLinks } from './scripts/parse.js';
+import { getResponse } from './scripts/prompt.js';
 
 const pageHandler = new PageHandler();
 
@@ -68,7 +69,7 @@ async function main(): Promise<void> {
 	}
 
 	console.log('🔵 Starting search for roles...');
-	pageHandler.closePage(0);
+	await pageHandler.closePage(0);
 	const searchUrl = process.env.SEARCH_URL || 'https://www.workatastartup.com/roles';
 	const searchPageOpened = await pageHandler.openUrl(searchUrl);
 
@@ -79,11 +80,43 @@ async function main(): Promise<void> {
 	}
 
 	const jobLinks = await getAllJobLinks(pageHandler.pages[0]);
+
 	if (jobLinks.length > 0) {
-		console.log('✅ Found job links:');
-		jobLinks.forEach(link => console.log(link));
+		console.log('✅ Found job links.');
 	} else {
 		console.log('❌ No job links found.');
+		return;
+	}
+
+	const appMethodPrompt = `Here is a job description. Does it indicate any specific application
+	method other than clicking the apply button? If so, describe the method in as few words as
+	possible. If the method includes contact information or a link, include the contact information
+	or link in your response. Your response should be a single word or phrase, or "none" if no
+	specific method is	indicated.\n\n\n`;
+
+	for (const link of jobLinks) {
+		console.log();
+		const jobPageOpened = await pageHandler.openUrl(link);
+
+		if (jobPageOpened) {
+			const jobText = await pageHandler.pages[1].evaluate(() => document.body.innerText);
+			const jobLines = jobText.split('\n');
+			const companyName = jobLines[2] || jobLines[0];// the third line is expected to be the job title and company's name
+			console.log(`🟪 Company name: ${companyName}`);
+
+			const appMethod = await getResponse(appMethodPrompt + jobText);
+
+			if (appMethod) {
+				console.log(`🟪 Application method: ${appMethod}`);
+			} else {
+				console.log('❌ Failed to get application method.');
+			}
+
+			// close the job page
+			await pageHandler.closePage(1);
+		} else {
+			console.log(`❌ Failed to open job link: ${link}`);
+		}
 	}
 }
 

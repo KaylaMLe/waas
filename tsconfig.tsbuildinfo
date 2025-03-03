@@ -1,1 +1,1 @@
-{"root":["./main.ts","./scripts/pagehandler.ts","./scripts/debug.ts","./scripts/parse.ts"],"version":"5.7.3"}
+{"root":["./main.ts","./scripts/pagehandler.ts","./scripts/debug.ts","./scripts/parse.ts","./scripts/prompt.ts"],"version":"5.7.3"}
