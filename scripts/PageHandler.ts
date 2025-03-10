@@ -46,10 +46,21 @@ export class PageHandler {
 		}
 	}
 
+	public getMostRecentPage(): Page {
+		return this.pages[this.pages.length - 1];
+	}
+
 	public async closePage(index: number): Promise<void> {
 		if (this.pages[index]) {
 			await this.pages[index].close();
 			this.pages.splice(index, 1);
+		}
+	}
+
+	public async closeMostRecentPage(): Promise<void> {
+		if (this.pages.length > 0) {
+			await this.pages[this.pages.length - 1].close();
+			this.pages.pop();
 		}
 	}
 
