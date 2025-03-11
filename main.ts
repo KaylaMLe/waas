@@ -86,10 +86,7 @@ async function main(): Promise<void> {
 	const jobLinks = await getAllJobLinks(pageHandler.getMostRecentPage());
 
 	if (jobLinks.length > 0) {
-		console.log('✅ Found job links.');
-		jobLinks.forEach((link, index) => {
-			console.log(`🔵 Job ${index + 1}: ${link}`);
-		});
+		console.log(`✅ Found ${jobLinks.length} job links.`);
 	} else {
 		console.log('❌ No job links found.');
 		const bodyText = await pageHandler.getMostRecentPage().evaluate(() => document.body.innerText);
@@ -98,26 +95,32 @@ async function main(): Promise<void> {
 	}
 
 	for (const link of jobLinks) {
-		console.log();
+		console.log(`\n${link}`);
 		const jobPageOpened = await pageHandler.openUrl(link);
 
 		if (jobPageOpened) {
+			await waitTime();
 			const jobText = await pageHandler.getMostRecentPage().evaluate(() => document.body.innerText);
 			const jobLines = jobText.split('\n');
-			const companyName = jobLines[2] || jobLines[0];// the third line is expected to be the job title and company's name
-			console.log(`🟪 Position: ${companyName}`);
 
-			const appMethod = await getResponse(appMethodPrompt + jobText);
-
-			if (appMethod) {
-				console.log(`🟪 Application method: ${appMethod}`);
-				await waitTime();
+			if (jobLines.length < 3) {
+				console.log('❌ This job description is too short! Is it a valid job description?');
+				console.log(jobText);
 			} else {
-				console.log(`❌ Failed to open job link: ${link}`);
-			}
-		}
+				const position = jobLines[2];// the third line is expected to be the job title and company's name
+				console.log(`🟪 Position: ${position}`);
 
-		await pageHandler.closeMostRecentPage();
+				const appMethod = await getResponse(appMethodPrompt + jobText);
+
+				if (appMethod) {
+					console.log(`🟪 Application method: ${appMethod}`);
+				} else {
+					console.log(`❌ Failed to open job link: ${link}`);
+				}
+			}
+
+			await pageHandler.closeMostRecentPage();
+		}
 	}
 }
 

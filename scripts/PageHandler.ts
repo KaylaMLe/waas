@@ -17,6 +17,8 @@ export class PageHandler {
 	/**
 	 * opens the specified URL in a headless browser and stores it in the pages array
 	 * 
+	 * Pages that are not successfully opened are closed and not stored before returning false.
+	 * 
 	 * @param {string} url - the URL to open
 	 * @returns {Promise<boolean>} - a promise that resolves to true if the URL was opened successfully, false otherwise
 	 */
