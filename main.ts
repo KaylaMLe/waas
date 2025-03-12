@@ -9,6 +9,7 @@ import { waitTime } from './scripts/utils.js';
 const pageHandler = new PageHandler();
 
 async function main(): Promise<void> {
+	// logging in
 	const loginUrl = 'https://account.ycombinator.com/?continue=https%3A%2F%2Fwww.workatastartup.com%2F';
 	const ids = ['ycid-input', 'password-input'];
 	const login = [process.env.YCUSER || 'foo', process.env.YCPSWD || 'bar'];
@@ -73,6 +74,7 @@ async function main(): Promise<void> {
 		return;
 	}
 
+	// retrieving links to job descriptions
 	await waitTime(30, 60);
 	console.log('🔵 Starting search for roles...');
 	const searchUrl = process.env.SEARCH_URL || 'https://www.workatastartup.com/companies';
@@ -94,6 +96,7 @@ async function main(): Promise<void> {
 		return;
 	}
 
+	// start parsing and analyzing job descriptions
 	for (const link of jobLinks) {
 		console.log(`\n${link}`);
 		const jobPageOpened = await pageHandler.openUrl(link);
