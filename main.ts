@@ -2,9 +2,9 @@ import { TimeoutError } from 'puppeteer';
 
 import { getResponse } from './scripts/aiUtils.js';
 import { PageHandler } from './scripts/PageHandler.js';
-import { findDivBtnByClass, findInputById, getAllJobLinks } from './scripts/parse.js';
+import { findDivBtnByClass, findDivTxtByIdPrefix, findInputById, getAllJobLinks } from './scripts/parse.js';
 import { appMethodPrompt } from './scripts/prompts.js';
-import { waitTime } from './scripts/utils.js';
+import { loadApplied, waitTime } from './scripts/utils.js';
 
 const pageHandler = new PageHandler();
 
@@ -97,32 +97,60 @@ async function main(): Promise<void> {
 	}
 
 	// start parsing and analyzing job descriptions
+	const applied = loadApplied();
+
 	for (const link of jobLinks) {
 		console.log(`\n${link}`);
 		const jobPageOpened = await pageHandler.openUrl(link);
 
-		if (jobPageOpened) {
-			await waitTime();
-			const jobText = await pageHandler.getMostRecentPage().evaluate(() => document.body.innerText);
-			const jobLines = jobText.split('\n');
+		if (!jobPageOpened) {
+			console.log('❌ Skipping this job page.');
+			continue;
+		}
 
-			if (jobLines.length < 3) {
-				console.log('❌ This job description is too short! Is it a valid job description?');
-				console.log(jobText);
-			} else {
-				const position = jobLines[2];// the third line is expected to be the job title and company's name
-				console.log(`🟪 Position: ${position}`);
+		await waitTime();
+		const jobText = await pageHandler.getMostRecentPage().evaluate(() => document.body.innerText);
+		const jobLines = jobText.split('\n');
 
-				const appMethod = await getResponse(appMethodPrompt + jobText);
+		if (jobLines.length < 3) {
+			console.log('❌ This job description is too short! Is it a valid job description?');
+			continue;
+		}
 
-				if (appMethod) {
-					console.log(`🟪 Application method: ${appMethod}`);
-				} else {
-					console.log(`❌ Failed to open job link: ${link}`);
-				}
-			}
 
+		// check if I've already applied to a job at this company
+		const position = jobLines[2];// the third line is expected to be the job title and company's name
+		const companyName = position.split(' at ')[1];
+
+		if (!companyName || applied.includes(companyName)) {
+			console.log(`❌ Either company name not found or already applied to ${companyName}`);
 			await pageHandler.closeMostRecentPage();
+			continue;
+		} else {
+			const applyBtnTxt = await findDivTxtByIdPrefix(pageHandler.getMostRecentPage(), 'ApplyButton');
+
+			if (applyBtnTxt === 'Applied') {
+				applied.push(companyName);
+				console.log(`✅ Already applied to ${companyName}`);
+				await pageHandler.closeMostRecentPage();
+				continue
+			}
+		}
+
+		console.log(`🟪 ${position}`);
+
+		// check if there is an application method other than the default
+		const appMethod = await getResponse(appMethodPrompt + jobText);
+
+		if (appMethod) {
+			console.log(`🟪 Application method: ${appMethod}`);
+		} else {
+			console.log('❌ Failed to retrieve application method.');
+		}
+
+		if (!appMethod || appMethod !== 'none') {
+			await pageHandler.closeMostRecentPage();
+			continue;
 		}
 	}
 }

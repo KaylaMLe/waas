@@ -59,8 +59,7 @@ export async function findDivBtnByClass(page: Page, className: string): Promise<
 }
 
 /**
- * Parses the page for all anchor tags with hrefs of the format "https://www.workatastartup.com/jobs/XXXX"
- * where XXXX is a nonempty series of digits. Returns these links.
+ * Parses the page for all anchor tags with hrefs starting with "https://www.workatastartup.com/jobs/"
  * 
  * @param page - The Puppeteer page object to search within.
  * @returns A promise that resolves to an array of job links.
@@ -74,3 +73,30 @@ export async function getAllJobLinks(page: Page): Promise<string[]> {
 
 	return jobLinks as string[];
 }
+
+/**
+ * Parses all the divs in the page for a div with an ID beginning with the input string.
+ * 
+ * @param page - The Puppeteer page object to search within.
+ * @param idPrefix - The prefix of the ID to search for.
+ * @returns A promise that resolves to the text content of the div if found, or null if not found.
+ */
+export async function findDivTxtByIdPrefix(page: Page, idPrefix: string): Promise<string | null> {
+	try {
+		const divElement = await page.$(`div[id^="${idPrefix}"]`);
+
+		if (divElement) {
+			console.log(`✅ Found div element with ID starting with: "${idPrefix}"`);
+			const textContent = await page.evaluate(div => div.textContent, divElement);
+			return textContent;
+		} else {
+			console.log(`❌ No div element found with ID starting with: "${idPrefix}"`);
+			return null;
+		}
+	} catch (error) {
+		console.error('⚠️ Unexpected error:', error);
+		return null;
+	}
+}
+
+

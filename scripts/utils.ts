@@ -17,3 +17,18 @@ export async function waitTime(rangeMin: number = 20, rangeMax: number = 30): Pr
 	console.log(`⏳ Waiting for ${seconds} seconds...`);
 	await new Promise(resolve => setTimeout(resolve, seconds * 1000));
 }
+
+/**
+ * Loads the environment variable of companies already applied to
+ * 
+ * @returns A list of company names
+ */
+export function loadApplied(): string[] {
+	const applied = process.env.APPLIED || '';
+
+	if (applied === '') {
+		return [];
+	}
+
+	return applied.split(',');
+}
