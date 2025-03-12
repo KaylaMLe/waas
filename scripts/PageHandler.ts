@@ -19,8 +19,8 @@ export class PageHandler {
 	 * 
 	 * Pages that are not successfully opened are closed and not stored before returning false.
 	 * 
-	 * @param {string} url - the URL to open
-	 * @returns {Promise<boolean>} - a promise that resolves to true if the URL was opened successfully, false otherwise
+	 * @param url - the URL to open
+	 * @returns a promise that resolves to true if the URL was opened successfully, false otherwise
 	 */
 
 	public async openUrl(url: string): Promise<boolean> {

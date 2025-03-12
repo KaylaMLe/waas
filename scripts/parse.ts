@@ -3,9 +3,9 @@ import { ElementHandle, Page } from 'puppeteer';
 /**
  * Finds an input element by its ID on the given Puppeteer page.
  * 
- * @param {Page} page - The Puppeteer page object to search within.
- * @param {string} id - The ID of the input element to find.
- * @returns {Promise<ElementHandle<Element> | null>} - A promise that resolves to the input element if found, or null if not found.
+ * @param page - The Puppeteer page object to search within.
+ * @param id - The ID of the input element to find.
+ * @returns A promise that resolves to the input element if found, or null if not found.
  */
 export async function findInputById(page: Page, id: string): Promise<ElementHandle<Element> | null> {
 	try {
@@ -27,9 +27,9 @@ export async function findInputById(page: Page, id: string): Promise<ElementHand
 /**
  * Looks for a button within a div with the specified class on the page.
  * 
- * @param {Page} page - the page object to search
- * @param {string} className - the class name to search for
- * @returns {Promise<ElementHandle<node> | null>} - the button element in the div if found, null otherwise
+ * @param page - the page object to search
+ * @param className - the class name to search for
+ * @returns the button element in the div if found, null otherwise
  */
 export async function findDivBtnByClass(page: Page, className: string): Promise<ElementHandle<HTMLButtonElement> | null> {
 	try {
@@ -62,8 +62,8 @@ export async function findDivBtnByClass(page: Page, className: string): Promise<
  * Parses the page for all anchor tags with hrefs of the format "https://www.workatastartup.com/jobs/XXXX"
  * where XXXX is a nonempty series of digits. Returns these links.
  * 
- * @param {Page} page - The Puppeteer page object to search within.
- * @returns {Promise<string[]>} - A promise that resolves to an array of job links.
+ * @param page - The Puppeteer page object to search within.
+ * @returns A promise that resolves to an array of job links.
  */
 export async function getAllJobLinks(page: Page): Promise<string[]> {
 	const jobLinks = await page.evaluate(() => {
