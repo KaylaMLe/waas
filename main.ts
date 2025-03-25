@@ -10,42 +10,41 @@ import { loadApplied, waitTime } from './scripts/utils.js';
 
 const pageHandler = new PageHandler();
 
-async function main(): Promise<void> {
-	// logging in
+async function loggingIn(): Promise<boolean> {
 	const loginUrl = 'https://account.ycombinator.com/?continue=https%3A%2F%2Fwww.workatastartup.com%2F';
-	const ids = ['ycid-input', 'password-input'];
-	const login = [process.env.YCUSER || 'foo', process.env.YCPSWD || 'bar'];
-
 	const pageOpened = await pageHandler.openUrl(loginUrl);
 
 	if (!pageOpened) {
-		console.log('❌ Failure: Page not opened.');
-		return;
+		console.log('❌ Login page not opened.');
+		return false;
 	}
 
 	await waitTime(30, 60);
+
+	const ids = ['ycid-input', 'password-input'];
+	const login = [process.env.YCUSER || 'foo', process.env.YCPSWD || 'bar'];
 
 	try {
 		for (let index = 0; index < ids.length; index++) {
 			const found = await findInputById(pageHandler.getMostRecentPage(), ids[index]);
 			if (found) {
 				await found.type(login[index]);
-				console.log(`✅ Success: Entered value into input with ID: "${ids[index]}"`);
-				await waitTime();
+				console.log(`✅ Entered value into input with ID: "${ids[index]}"`);
+				await waitTime(5, 10);
 			} else {
-				return;
+				return false;
 			}
 		}
 	} catch (error) {
-		console.error('⚠️ Error:', error);
-		return;
+		console.error('⚠️ Unexpected error:', error);
+		return false;
 	}
 
 	const loginBtn = await findDivBtnByClass(pageHandler.getMostRecentPage(), 'actions');
 
-	// findDiveBtnByClass will return null and log an error if the button is not found
+	// findDivBtnByClass will return null and log an error if the button is not found
 	if (!loginBtn) {
-		return;
+		return false;
 	}
 
 	await loginBtn.click();
@@ -61,7 +60,7 @@ async function main(): Promise<void> {
 			console.error('⚠️ Unexpected error:', error);
 		}
 
-		return;
+		return false;
 	}
 
 	const name = process.env.YCNAME || 'My profile';
@@ -69,21 +68,15 @@ async function main(): Promise<void> {
 		document.body.innerText.includes(name)
 	);
 
-	if (nameFound) {
-		console.log('✅ Logged in');
-	} else {
-		console.log('❌ Login unsuccessful');
-		return;
-	}
+	return nameFound;
+}
 
-	// retrieving links to job descriptions
-	await waitTime(30, 60);
-	console.log('🔵 Starting search for roles...');
+async function getJobLinks(): Promise<string[]> {
 	const searchUrl = process.env.SEARCH_URL || 'https://www.workatastartup.com/companies';
 	const searchPageOpened = await pageHandler.openUrl(searchUrl);
 
 	if (!searchPageOpened) {
-		return;
+		return [];
 	}
 
 	await waitTime(30, 60);
@@ -95,10 +88,44 @@ async function main(): Promise<void> {
 		console.log('❌ No job links found.');
 		const bodyText = await pageHandler.getMostRecentPage().evaluate(() => document.body.innerText);
 		console.log(`Body text: ${bodyText}`);
+	}
+
+	return jobLinks;
+}
+
+async function checkAppMethod(jobText: string): Promise<string> {
+	const methodResponse = await getResponse(appMethodPrompt + jobText);
+
+	if (methodResponse) {
+		console.log(`🟪 Application method: ${methodResponse}`);
+	} else {
+		console.log('❌ Failed to retrieve application method.');
+	}
+
+	const appMethod = methodResponse || 'error';
+
+	return appMethod;
+}
+
+async function main(): Promise<void> {
+	const loggedIn = await loggingIn();
+
+	if (loggedIn) {
+		console.log('✅ Logged in');
+	} else {
+		console.log('❌ Login unsuccessful');
 		return;
 	}
 
-	// start parsing and analyzing job descriptions
+	await waitTime(30, 60);
+	console.log('🔵 Starting search for roles...');
+	const jobLinks = await getJobLinks();
+
+	if (jobLinks.length <= 0) {
+		return;
+	}
+
+	// scrape job descriptions and check for companies already applied to
 	const companyRecords = loadApplied();
 
 	for (const link of jobLinks) {
@@ -114,6 +141,7 @@ async function main(): Promise<void> {
 		const jobText = await pageHandler.getMostRecentPage().evaluate(() => document.body.innerText);
 		const jobLines = jobText.split('\n');
 
+		// if the job description is too short, it won't have the expected info in the expected places
 		if (jobLines.length < 3) {
 			console.log('❌ This job description is too short! Is it a valid job description?');
 			continue;
@@ -121,47 +149,31 @@ async function main(): Promise<void> {
 
 		// check if I've already applied to a job at this company
 		const position = jobLines[2];// the third line is expected to be the job title and company's name
+		console.log(`🟪 ${position}`);
 		const companyName = position.split(' at ')[1];
 
+		// if the company name couldn't be parsed or if the company has already been applied to, skip this job
 		if (!companyName || (companyName in companyRecords && companyRecords[companyName].applied)) {
 			console.log(`❌ Either company name not found or already applied to ${companyName}`);
-			await pageHandler.closeMostRecentPage();
-			continue;
 		} else {
 			const applyBtnTxt = await findDivTxtByIdPrefix(pageHandler.getMostRecentPage(), 'ApplyButton');
-			// close page after last check of dom
-			await pageHandler.closeMostRecentPage();
+			// if the apply button says 'Applied' and not 'Apply', it means I've already applied to this job
+			const hasApplied = applyBtnTxt === 'Applied';
 
-			if (applyBtnTxt === 'Applied') {
-				if (companyName in companyRecords) {
-					companyRecords[companyName].applied = true;
-				} else {
-					companyRecords[companyName] = new Company(true);
-				}
+			if (!(companyName in companyRecords)) {
+				companyRecords[companyName] = new Company(hasApplied);
+			} else {
+				companyRecords[companyName].applied = hasApplied;
+			}
 
-				console.log(`✅ Already applied to ${companyName}`);
-				continue
+			if (hasApplied) {
+				console.log('❌ Already applied to this job.');
+			} else {
+				companyRecords[companyName].jobs.push(new Job(link, jobText));
 			}
 		}
 
-		console.log(`🟪 ${position}`);
-
-		// check if there is an application method other than the default
-		const methodResponse = await getResponse(appMethodPrompt + jobText);
-
-		if (methodResponse) {
-			console.log(`🟪 Application method: ${methodResponse}`);
-		} else {
-			console.log('❌ Failed to retrieve application method.');
-		}
-
-		const appMethod = methodResponse || 'error';
-
-		if (!(companyName in companyRecords)) {
-			companyRecords[companyName] = new Company(false);
-		}
-
-		companyRecords[companyName].jobs.push(new Job(link, appMethod, jobText));
+		await pageHandler.closeMostRecentPage();
 	}
 }
 
