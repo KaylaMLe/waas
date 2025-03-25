@@ -1,6 +1,8 @@
 import { TimeoutError } from 'puppeteer';
 
 import { getResponse } from './scripts/aiUtils.js';
+import Company from './scripts/Company.js';
+import Job from './scripts/Job.js';
 import { PageHandler } from './scripts/PageHandler.js';
 import { findDivBtnByClass, findDivTxtByIdPrefix, findInputById, getAllJobLinks } from './scripts/parse.js';
 import { appMethodPrompt } from './scripts/prompts.js';
@@ -97,7 +99,7 @@ async function main(): Promise<void> {
 	}
 
 	// start parsing and analyzing job descriptions
-	const applied = loadApplied();
+	const companyRecords = loadApplied();
 
 	for (const link of jobLinks) {
 		console.log(`\n${link}`);
@@ -117,22 +119,27 @@ async function main(): Promise<void> {
 			continue;
 		}
 
-
 		// check if I've already applied to a job at this company
 		const position = jobLines[2];// the third line is expected to be the job title and company's name
 		const companyName = position.split(' at ')[1];
 
-		if (!companyName || applied.includes(companyName)) {
+		if (!companyName || (companyName in companyRecords && companyRecords[companyName].applied)) {
 			console.log(`❌ Either company name not found or already applied to ${companyName}`);
 			await pageHandler.closeMostRecentPage();
 			continue;
 		} else {
 			const applyBtnTxt = await findDivTxtByIdPrefix(pageHandler.getMostRecentPage(), 'ApplyButton');
+			// close page after last check of dom
+			await pageHandler.closeMostRecentPage();
 
 			if (applyBtnTxt === 'Applied') {
-				applied.push(companyName);
+				if (companyName in companyRecords) {
+					companyRecords[companyName].applied = true;
+				} else {
+					companyRecords[companyName] = new Company(true);
+				}
+
 				console.log(`✅ Already applied to ${companyName}`);
-				await pageHandler.closeMostRecentPage();
 				continue
 			}
 		}
@@ -140,18 +147,21 @@ async function main(): Promise<void> {
 		console.log(`🟪 ${position}`);
 
 		// check if there is an application method other than the default
-		const appMethod = await getResponse(appMethodPrompt + jobText);
+		const methodResponse = await getResponse(appMethodPrompt + jobText);
 
-		if (appMethod) {
-			console.log(`🟪 Application method: ${appMethod}`);
+		if (methodResponse) {
+			console.log(`🟪 Application method: ${methodResponse}`);
 		} else {
 			console.log('❌ Failed to retrieve application method.');
 		}
 
-		if (!appMethod || appMethod !== 'none') {
-			await pageHandler.closeMostRecentPage();
-			continue;
+		const appMethod = methodResponse || 'error';
+
+		if (!(companyName in companyRecords)) {
+			companyRecords[companyName] = new Company(false);
 		}
+
+		companyRecords[companyName].jobs.push(new Job(link, appMethod, jobText));
 	}
 }
 

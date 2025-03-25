@@ -1,3 +1,5 @@
+import Company from './Company';
+
 /**
  * Waits for a random amount of time between rangeMin and rangeMax seconds.
  * 
@@ -21,14 +23,21 @@ export async function waitTime(rangeMin: number = 20, rangeMax: number = 30): Pr
 /**
  * Loads the environment variable of companies already applied to
  * 
- * @returns A list of company names
+ * @returns A Record with company names as keys and Company objects as values.
+ *          If no companies are found, an empty object is returned.
  */
-export function loadApplied(): string[] {
+export function loadApplied(): Record<string, Company> {
 	const applied = process.env.APPLIED || '';
 
 	if (applied === '') {
-		return [];
+		return {};
 	}
 
-	return applied.split(',');
+	const companyRecords: Record<string, Company> = {};
+
+	applied.split(',').forEach(company => {
+		companyRecords[company] = new Company(true);
+	});
+
+	return companyRecords;
 }
