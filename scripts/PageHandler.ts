@@ -5,7 +5,6 @@ export class PageHandler {
 	private browserLoading: Promise<void> | null = null;
 	public pages: Page[] = [];
 
-	// start launching browser
 	constructor() {
 		this.browserLoading = this.init();
 	}
@@ -66,6 +65,12 @@ export class PageHandler {
 		}
 	}
 
+	/**
+	 * Closes all open pages and the browser itself.
+	 * 
+	 * This method ensures that all pages are closed before closing the browser.
+	 * It also resets the pages array to an empty state.
+	 */
 	public async closeBrowser() {
 		if (this.pages.length > 0) {
 			await Promise.all(this.pages.map(page => page.close()));

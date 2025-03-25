@@ -10,6 +10,11 @@ import { loadApplied, waitTime } from './scripts/utils.js';
 
 const pageHandler = new PageHandler();
 
+/**
+ * Logs into the Y Combinator account and checks if the login was successful.
+ * 
+ * @returns A promise that resolves to true if the login was successful, false otherwise.
+ */
 async function loggingIn(): Promise<boolean> {
 	const loginUrl = 'https://account.ycombinator.com/?continue=https%3A%2F%2Fwww.workatastartup.com%2F';
 	const pageOpened = await pageHandler.openUrl(loginUrl);
@@ -71,6 +76,11 @@ async function loggingIn(): Promise<boolean> {
 	return nameFound;
 }
 
+/**
+ * Gathers jobs from the search page
+ * 
+ * @returns an array of links to each job listing
+ */
 async function getJobLinks(): Promise<string[]> {
 	const searchUrl = process.env.SEARCH_URL || 'https://www.workatastartup.com/companies';
 	const searchPageOpened = await pageHandler.openUrl(searchUrl);
@@ -87,12 +97,18 @@ async function getJobLinks(): Promise<string[]> {
 	} else {
 		console.log('❌ No job links found.');
 		const bodyText = await pageHandler.getMostRecentPage().evaluate(() => document.body.innerText);
-		console.log(`Body text: ${bodyText}`);
+		console.log('Body text:\n', bodyText);
 	}
 
 	return jobLinks;
 }
 
+/**
+ * Analyzes the job description to determine the application method.
+ * 
+ * @param jobText - the body text of the job posting page
+ * @returns a promise that resolves to the application method if one is specified, 'none' otherwise, or 'error' if an error occurs
+ */
 async function checkAppMethod(jobText: string): Promise<string> {
 	const methodResponse = await getResponse(appMethodPrompt + jobText);
 

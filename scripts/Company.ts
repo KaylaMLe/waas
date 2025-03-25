@@ -7,9 +7,6 @@ import Job from './Job';
  * @property {Job[]} jobs - the list of jobs at this company
  */
 export default class Company {
-	/**
-	 * @param applied - whether this company has already been applied to
-	 */
 	public applied: boolean;
 	public jobs: Job[] = [];
 
