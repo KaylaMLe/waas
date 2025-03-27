@@ -1,4 +1,4 @@
-import Company from './Company';
+import Company from './Company.js';
 
 /**
  * Waits for a random amount of time between rangeMin and rangeMax seconds.

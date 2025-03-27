@@ -1,11 +1,10 @@
 import { TimeoutError } from 'puppeteer';
 
-import { getResponse } from './scripts/aiUtils.js';
+import { compareJobs } from './scripts/aiUtils.js';
 import Company from './scripts/Company.js';
 import Job from './scripts/Job.js';
 import { PageHandler } from './scripts/PageHandler.js';
 import { findDivBtnByClass, findDivTxtByIdPrefix, findInputById, getAllJobLinks } from './scripts/parse.js';
-import { appMethodPrompt } from './scripts/prompts.js';
 import { loadApplied, waitTime } from './scripts/utils.js';
 
 const pageHandler = new PageHandler();
@@ -103,26 +102,6 @@ async function getJobLinks(): Promise<string[]> {
 	return jobLinks;
 }
 
-/**
- * Analyzes the job description to determine the application method.
- * 
- * @param jobText - the body text of the job posting page
- * @returns a promise that resolves to the application method if one is specified, 'none' otherwise, or 'error' if an error occurs
- */
-async function checkAppMethod(jobText: string): Promise<string> {
-	const methodResponse = await getResponse(appMethodPrompt + jobText);
-
-	if (methodResponse) {
-		console.log(`🟪 Application method: ${methodResponse}`);
-	} else {
-		console.log('❌ Failed to retrieve application method.');
-	}
-
-	const appMethod = methodResponse || 'error';
-
-	return appMethod;
-}
-
 async function main(): Promise<void> {
 	const loggedIn = await loggingIn();
 
@@ -190,6 +169,30 @@ async function main(): Promise<void> {
 		}
 
 		await pageHandler.closeMostRecentPage();
+	}
+
+	const appliedCompanies = [];
+
+	for (const companyName in companyRecords) {
+		if (companyRecords[companyName].applied) {
+			appliedCompanies.push(companyName);
+		} else {
+			// compare all jobs at this company and find the one that best fits my qualifications before applying
+			// the only companies with zero jobs are the companies included in the APPLIED environment variable
+			let bestJob: Job | null = null;
+
+			if (companyRecords[companyName].jobs.length > 1) {
+				bestJob = await compareJobs(companyRecords[companyName].jobs);
+			} else {
+				bestJob = companyRecords[companyName].jobs[0];
+			}
+
+			if (!bestJob) {
+				console.log('⚠️ An error occurred while comparing jobs. Skipping this company.');
+			} else {
+				console.log(`🟩 Best job for ${companyName}: ${bestJob.link}`);
+			}
+		}
 	}
 }
 
