@@ -11,12 +11,12 @@ export async function waitTime(rangeMin: number = 20, rangeMax: number = 30): Pr
 	const rangeDiff = rangeMax - rangeMin;
 
 	if (rangeDiff < 0) {
-		console.log('❌ rangeMin is greater than rangeMax. Skipping this wait.');
+		console.log('❌ rangeMin is greater than rangeMax. Skipping this wait.\n');
 		return;
 	}
 
 	const seconds = Math.floor(Math.random() * (rangeDiff + 1)) + rangeMin;
-	console.log(`⏳ Waiting for ${seconds} seconds...`);
+	console.log(`⏳ Waiting for ${seconds} seconds...\n`);
 	await new Promise(resolve => setTimeout(resolve, seconds * 1000));
 }
 

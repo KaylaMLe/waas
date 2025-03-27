@@ -42,7 +42,7 @@ export async function findDivBtnByClass(page: Page, className: string): Promise<
 			return null;
 		}
 
-		const btnElement = await foundDiv?.$('button');
+		const btnElement = await foundDiv.$('button');
 
 		if (btnElement) {
 			console.log('✅ Found button element within div');
@@ -66,9 +66,11 @@ export async function findDivBtnByClass(page: Page, className: string): Promise<
  */
 export async function getAllJobLinks(page: Page): Promise<string[]> {
 	const jobLinks = await page.evaluate(() => {
-		const anchors = Array.from(document.querySelectorAll('a[href^="https://www.workatastartup.com/jobs/"]'));
-		return anchors
-			.map(anchor => anchor.getAttribute('href'));
+		const jobDivs = Array.from(document.querySelectorAll('div.job-name'));
+		const anchors = jobDivs.flatMap(div =>
+			Array.from(div.querySelectorAll('a[href^="https://www.workatastartup.com/jobs/"]'))
+		);
+		return anchors.map(anchor => anchor.getAttribute('href'));
 	});
 
 	return jobLinks as string[];

@@ -34,7 +34,7 @@ async function loggingIn(): Promise<boolean> {
 			if (found) {
 				await found.type(login[index]);
 				console.log(`✅ Entered value into input with ID: "${ids[index]}"`);
-				await waitTime(5, 10);
+				await waitTime(2, 5);
 			} else {
 				return false;
 			}
@@ -132,23 +132,22 @@ async function main(): Promise<void> {
 			continue;
 		}
 
-		await waitTime();
 		const jobText = await pageHandler.getMostRecentPage().evaluate(() => document.body.innerText);
 		const jobLines = jobText.split('\n');
 
 		// if the job description is too short, it won't have the expected info in the expected places
-		if (jobLines.length < 3) {
+		if (jobLines.length < 11) {
 			console.log('❌ This job description is too short! Is it a valid job description?');
 			continue;
 		}
 
 		// check if I've already applied to a job at this company
-		const position = jobLines[2];// the third line is expected to be the job title and company's name
+		const position = jobLines[10];// the eleventh line is expected to be the job title and company's name
 		console.log(`🟪 ${position}`);
 		const companyName = position.split(' at ')[1];
 
 		// if the company name couldn't be parsed or if the company has already been applied to, skip this job
-		if (!companyName || (companyName in companyRecords && companyRecords[companyName].applied)) {
+		if (companyName && companyName in companyRecords && companyRecords[companyName].applied) {
 			console.log(`❌ Either company name not found or already applied to ${companyName}`);
 		} else {
 			const applyBtnTxt = await findDivTxtByIdPrefix(pageHandler.getMostRecentPage(), 'ApplyButton');
@@ -165,9 +164,11 @@ async function main(): Promise<void> {
 				console.log('❌ Already applied to this job.');
 			} else {
 				companyRecords[companyName].jobs.push(new Job(link, jobText));
+				console.log('✅ Job added to company record.');
 			}
 		}
 
+		await waitTime();
 		await pageHandler.closeMostRecentPage();
 	}
 
