@@ -3,9 +3,9 @@ import { ElementHandle, Page } from 'puppeteer';
 /**
  * Finds an input element by its ID on the given Puppeteer page.
  * 
- * @param {Page} page - The Puppeteer page object to search within.
- * @param {string} id - The ID of the input element to find.
- * @returns {Promise<ElementHandle<Element> | null>} - A promise that resolves to the input element if found, or null if not found.
+ * @param page - The Puppeteer page object to search within.
+ * @param id - The ID of the input element to find.
+ * @returns A promise that resolves to the input element if found, or null if not found.
  */
 export async function findInputById(page: Page, id: string): Promise<ElementHandle<Element> | null> {
 	try {
@@ -27,9 +27,9 @@ export async function findInputById(page: Page, id: string): Promise<ElementHand
 /**
  * Looks for a button within a div with the specified class on the page.
  * 
- * @param {Page} page - the page object to search
- * @param {string} className - the class name to search for
- * @returns {Promise<ElementHandle<node> | null>} - the button element in the div if found, null otherwise
+ * @param page - the page object to search
+ * @param className - the class name to search for
+ * @returns the button element in the div if found, null otherwise
  */
 export async function findDivBtnByClass(page: Page, className: string): Promise<ElementHandle<HTMLButtonElement> | null> {
 	try {
@@ -42,7 +42,7 @@ export async function findDivBtnByClass(page: Page, className: string): Promise<
 			return null;
 		}
 
-		const btnElement = await foundDiv?.$('button');
+		const btnElement = await foundDiv.$('button');
 
 		if (btnElement) {
 			console.log('✅ Found button element within div');
@@ -59,18 +59,62 @@ export async function findDivBtnByClass(page: Page, className: string): Promise<
 }
 
 /**
- * Parses the page for all anchor tags with hrefs of the format "https://www.workatastartup.com/jobs/XXXX"
- * where XXXX is a nonempty series of digits. Returns these links.
+ * Parses the page for all anchor tags with hrefs starting with "https://www.workatastartup.com/jobs/"
  * 
- * @param {Page} page - The Puppeteer page object to search within.
- * @returns {Promise<string[]>} - A promise that resolves to an array of job links.
+ * @param page - The Puppeteer page object to search within.
+ * @returns A promise that resolves to an array of job links.
  */
 export async function getAllJobLinks(page: Page): Promise<string[]> {
 	const jobLinks = await page.evaluate(() => {
-		const anchors = Array.from(document.querySelectorAll('a[href^="https://www.workatastartup.com/jobs/"]'));
-		return anchors
-			.map(anchor => anchor.getAttribute('href'));
+		const jobDivs = Array.from(document.querySelectorAll('div.job-name'));
+		const anchors = jobDivs.flatMap(div =>
+			Array.from(div.querySelectorAll('a[href^="https://www.workatastartup.com/jobs/"]'))
+		);
+		return anchors.map(anchor => anchor.getAttribute('href'));
 	});
 
 	return jobLinks as string[];
+}
+
+/**
+ * Parses all the divs in the page for a div with an ID beginning with the input string.
+ * 
+ * @param page - The Puppeteer page object to search within.
+ * @param idPrefix - The prefix of the ID to search for.
+ * @returns A promise that resolves to the div if found, or null if not found.
+ */
+export async function findDivByIdPrefix(page: Page, idPrefix: string): Promise<ElementHandle<HTMLDivElement> | null> {
+	try {
+		const divElement = await page.$(`div[id^="${idPrefix}"]`);
+
+		if (divElement) {
+			console.log(`✅ Found div element with ID starting with: "${idPrefix}"`);
+			return divElement;
+		} else {
+			console.log(`❌ No div element found with ID starting with: "${idPrefix}"`);
+			return null;
+		}
+	} catch (error) {
+		console.error('⚠️ Unexpected error:', error);
+		return null;
+	}
+}
+
+export async function findBtnByTxt(page: Page, innerText: string): Promise<ElementHandle<HTMLButtonElement> | null> {
+	try {
+		const btnElement = await page.evaluateHandle((text) => {
+			return Array.from(document.querySelectorAll('button')).find(btn => btn.textContent?.trim() === text);
+		}, innerText);
+
+		if (btnElement instanceof ElementHandle) {
+			console.log(`✅ Found button element with text: "${innerText}"`);
+			return btnElement;
+		} else {
+			console.log(`❌ No button element found with text: "${innerText}"`);
+			return null;
+		}
+	} catch (error) {
+		console.error('⚠️ Error:', error);
+		return null;
+	}
 }
