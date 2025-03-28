@@ -2,7 +2,7 @@ import fs from 'fs';
 import OpenAI from 'openai';
 
 import Job from './Job.js';
-import { appMethodPrompt, jobComparePrompt } from './prompts.js';
+import { appMethodPrompt, appMsgPrompt, jobComparePrompt } from './prompts.js';
 
 const openai = new OpenAI();
 
@@ -58,11 +58,12 @@ export async function getResponseWithFile(prompt: string, filePath: string): Pro
 
 /**
  * Analyzes the job description to determine the application method.
+ * also prints the application method to the console.
  * 
  * @param jobText - the body text of the job posting page
  * @returns a promise that resolves to the application method if one is specified, 'none' otherwise, or 'error' if an error occurs
  */
-export async function checkAppMethod(jobText: string): Promise<string> {
+export async function checkAppMethod(jobText: string): Promise<string | null> {
 	const methodResponse = await getResponse(appMethodPrompt + jobText);
 
 	if (methodResponse) {
@@ -71,9 +72,7 @@ export async function checkAppMethod(jobText: string): Promise<string> {
 		console.log('⚠️ Failed to retrieve application method.');
 	}
 
-	const appMethod = methodResponse || 'error';
-
-	return appMethod;
+	return methodResponse;
 }
 
 /**
@@ -101,4 +100,23 @@ export async function compareJobs(jobs: Job[]): Promise<Job | null> {
 			return null;
 		}
 	}
+}
+
+/**
+ * Generates an application message based on the job description and prints it to the console.
+ * 
+ * @param jobDesc - the body text of the job posting page
+ * @returns a promise that resolves to the application message if one is generated, or null if an error occurs
+ */
+export async function writeAppMsg(jobDesc: string): Promise<string | null> {
+	const prompt = appMsgPrompt + '\n\n\n' + jobDesc;
+	const msgResponse = await getResponseWithFile(prompt, process.env.RESUME_PATH || 'resume.pdf');
+
+	if (msgResponse) {
+		console.log(`🟩 Application message: ${msgResponse}`);
+	} else {
+		console.log('⚠️ Failed to retrieve application message.');
+	}
+
+	return msgResponse;
 }

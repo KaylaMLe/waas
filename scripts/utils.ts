@@ -1,3 +1,5 @@
+import { createInterface } from 'readline';
+
 import Company from './Company.js';
 
 /**
@@ -40,4 +42,28 @@ export function loadApplied(): Record<string, Company> {
 	});
 
 	return companyRecords;
+}
+
+/**
+ * Prompts the user for input in the console and returns the trimmed response.
+ * 
+ * @param prompt - The prompt to display to the user.
+ * @returns A promise that resolves to the user's input, trimmed of whitespace.
+ */
+export async function consolePrompt(prompt: string): Promise<string> {
+	const answer = await new Promise<string>((resolve) => {
+		const rl = createInterface({
+			input: process.stdin,
+			output: process.stdout,
+		});
+
+		rl.question(prompt,
+			(answer: string) => {
+				rl.close();
+				resolve(answer.trim());
+			}
+		);
+	});
+
+	return answer;
 }

@@ -1,11 +1,11 @@
-import { TimeoutError } from 'puppeteer';
+import { ElementHandle, TimeoutError } from 'puppeteer';
 
-import { compareJobs } from './scripts/aiUtils.js';
+import { checkAppMethod, compareJobs, writeAppMsg } from './scripts/aiUtils.js';
 import Company from './scripts/Company.js';
 import Job from './scripts/Job.js';
 import { PageHandler } from './scripts/PageHandler.js';
-import { findDivBtnByClass, findDivTxtByIdPrefix, findInputById, getAllJobLinks } from './scripts/parse.js';
-import { loadApplied, waitTime } from './scripts/utils.js';
+import { findBtnByTxt, findDivBtnByClass, findDivByIdPrefix, findInputById, getAllJobLinks } from './scripts/parse.js';
+import { consolePrompt, loadApplied, waitTime } from './scripts/utils.js';
 
 const pageHandler = new PageHandler();
 
@@ -150,7 +150,14 @@ async function main(): Promise<void> {
 		if (companyName && companyName in companyRecords && companyRecords[companyName].applied) {
 			console.log(`❌ Either company name not found or already applied to ${companyName}`);
 		} else {
-			const applyBtnTxt = await findDivTxtByIdPrefix(pageHandler.getMostRecentPage(), 'ApplyButton');
+			const applyBtn = await findDivByIdPrefix(pageHandler.getMostRecentPage(), 'ApplyButton');
+
+			if (!applyBtn) {
+				console.log('❌ Skipping this job page.');
+				continue;
+			}
+
+			const applyBtnTxt = await pageHandler.getMostRecentPage().evaluate((btn) => btn.innerText, applyBtn);
 			// if the apply button says 'Applied' and not 'Apply', it means I've already applied to this job
 			const hasApplied = applyBtnTxt === 'Applied';
 
@@ -168,7 +175,7 @@ async function main(): Promise<void> {
 			}
 		}
 
-		await waitTime();
+		await waitTime(10, 20);
 		await pageHandler.closeMostRecentPage();
 	}
 
@@ -192,10 +199,128 @@ async function main(): Promise<void> {
 				console.log('⚠️ An error occurred while comparing jobs. Skipping this company.');
 			} else {
 				console.log(`🟩 Best job for ${companyName}: ${bestJob.link}`);
+				const appMethod = await checkAppMethod(bestJob.desc);
+
+				if (!appMethod) {
+					console.log('❌ Skipping this job.');
+				} else if (appMethod === 'none') {
+					// generate a message to send to the company
+					let msg = await writeAppMsg(bestJob.desc);
+					let approved = false;
+
+					// ask the user for approval before sending the message
+					while (!approved || !msg) {
+						let userInput = '';
+
+						// keep prompting the user until a valid response is given
+						while (userInput !== 'Y' && userInput !== 'N') {
+							userInput = await consolePrompt(`🔵 Do you want to send this message to ${companyName}?\nType "Y" to approve or "N" to enter a different message: `);
+							userInput = userInput.toUpperCase();
+						}
+
+						if (userInput === 'Y') {
+							approved = true;
+							console.log('✅ Message approved.');
+						} else {
+							// make sure the message is not instantly approved if the user enters an empty message
+							approved = false;
+							msg = await consolePrompt('🔵 Enter a new message:\n');
+						}
+					}
+
+					// apply with the now approved message
+					const openedJobPage = await pageHandler.openUrl(bestJob.link);
+
+					if (!openedJobPage) {
+						console.log('❌ Skipping this job application.');
+						continue;
+					}
+
+					await waitTime(10, 20);
+					const applyBtn = await findDivByIdPrefix(pageHandler.getMostRecentPage(), 'ApplyButton');
+
+					if (!applyBtn) {
+						console.log('❌ Skipping this job application.');
+						continue;
+					}
+
+					await applyBtn.click();
+					console.log('✅ Clicked the apply button.');
+
+					// wait up to three seconds for a textarea element to appear in the dom
+					try {
+						await pageHandler.getMostRecentPage().waitForSelector('textarea', { timeout: 3000 });
+					} catch (error) {
+						if (error instanceof TimeoutError) {
+							console.error('⚠️ TimeoutError: The application modal did not appear within 3 seconds');
+						} else {
+							console.error('⚠️ Unexpected error:', error);
+						}
+
+						console.log('❌ Skipping this job application.');
+						continue;
+					}
+
+					// find the textarea element and type the message into it
+					const textArea = await pageHandler.getMostRecentPage().$('textarea');
+
+					if (!textArea) {
+						console.log('❌ Could not find the application input box. Skipping this job application.');
+						continue;
+					}
+
+					await textArea.type(msg);
+					console.log('✅ Entered message into application input box.');
+					await waitTime(2, 5);
+					const sendBtn = await findBtnByTxt(pageHandler.getMostRecentPage(), 'Send');
+
+					if (!(sendBtn instanceof ElementHandle)) {
+						console.log('❌ Could not find the send button. Skipping this job application.');
+						continue;
+					}
+
+					await sendBtn.click();
+					console.log('✅ Clicked the send button.');
+
+					try {
+						await pageHandler.getMostRecentPage().waitForFunction(
+							(btn) => btn.innerText === 'Applied',
+							{ timeout: 3000 },
+							applyBtn
+						);
+					}
+					catch (error) {
+						if (error instanceof TimeoutError) {
+							console.error('⚠️ TimeoutError: The post-application page did not load within 3 seconds.');
+						} else {
+							console.error('⚠️ Unexpected error:', error);
+						}
+
+						console.log('❌ Skipping this job application.');
+						continue;
+					}
+
+					console.log('🎉 Application sent successfully!');
+					appliedCompanies.push(companyName);
+					pageHandler.closeMostRecentPage();
+				}
 			}
 		}
+
+		console.log();
 	}
+
+	// after all the jobs have been applied to, log the new list of applied companies to the console
+	const appliedCompaniesStr = appliedCompanies.length > 0 ? appliedCompanies.join(',') : 'none';
+	console.log(`\n🔵 You have applied to the following companies:\n${appliedCompaniesStr}`);
 }
 
-await main();
-await pageHandler.closeBrowser();
+try {
+	await main();
+} catch (error) {
+	console.error('⚠️ An unexpected error occurred:', error);
+} finally {
+	// close the browser and all pages
+	console.log('🔵 Closing the browser...');
+	await pageHandler.closeBrowser();
+}
