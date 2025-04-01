@@ -3,7 +3,7 @@
 	"scripts": {
 		"build": "npx tsc --build",
 		"start": "node --env-file=.env ./main.js",
-		"clear": "powershell -Command \"Get-ChildItem -Path . -Recurse -Filter *.js | Where-Object { -not $_.FullName -like '*\\node_modules\\*' } | Remove-Item\""
+		"clear": "powershell -Command \"Get-ChildItem -Path . -Recurse -Filter *.js | Where-Object { $_.FullName -notmatch 'node_modules' } | Remove-Item\""
 	},
 	"dependencies": {
 		"@types/puppeteer": "^5.4.7",
