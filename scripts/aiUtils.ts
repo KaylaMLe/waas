@@ -1,7 +1,7 @@
 import fs from 'fs';
 import OpenAI from 'openai';
 
-import Job from './Job.js';
+import Job from './classes/Job.js';
 import { appMethodPrompt, appMsgPrompt, jobComparePrompt } from './prompts.js';
 
 const openai = new OpenAI();

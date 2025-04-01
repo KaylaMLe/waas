@@ -1,10 +1,10 @@
 import { ElementHandle, TimeoutError } from 'puppeteer';
 
 import { checkAppMethod, compareJobs, writeAppMsg } from './scripts/aiUtils.js';
-import Company from './scripts/Company.js';
-import Job from './scripts/Job.js';
-import { PageHandler } from './scripts/PageHandler.js';
-import { findBtnByTxt, findDivBtnByClass, findDivByIdPrefix, findInputById, getAllJobLinks } from './scripts/parse.js';
+import Company from './scripts/classes/Company.js';
+import Job from './scripts/classes/Job.js';
+import { PageHandler } from './scripts/classes/PageHandler.js';
+import { findBtnByTxt, findDivBtnByClass, findDivByIdPrefix, findInputById, getAllJobLinks } from './scripts/parseUtils.js';
 import { consolePrompt, loadApplied, waitTime } from './scripts/utils.js';
 
 const pageHandler = new PageHandler();

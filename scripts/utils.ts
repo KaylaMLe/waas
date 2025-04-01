@@ -1,6 +1,6 @@
 import { createInterface } from 'readline';
 
-import Company from './Company.js';
+import Company from './classes/Company.js';
 
 /**
  * Waits for a random amount of time between rangeMin and rangeMax seconds.
