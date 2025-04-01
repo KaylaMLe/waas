@@ -23,7 +23,7 @@ async function loggingIn(): Promise<boolean> {
 		return false;
 	}
 
-	await waitTime(30, 60);
+	await waitTime();
 
 	const ids = ['ycid-input', 'password-input'];
 	const login = [process.env.YCUSER || 'foo', process.env.YCPSWD || 'bar'];
@@ -34,7 +34,7 @@ async function loggingIn(): Promise<boolean> {
 			if (found) {
 				await found.type(login[index]);
 				console.log(`✅ Entered value into input with ID: "${ids[index]}"`);
-				await waitTime(2, 5);
+				await waitTime(1, 3);
 			} else {
 				return false;
 			}
@@ -88,7 +88,7 @@ async function getJobLinks(): Promise<string[]> {
 		return [];
 	}
 
-	await waitTime(30, 60);
+	await waitTime();
 	const jobLinks = await getAllJobLinks(pageHandler.getMostRecentPage());
 
 	if (jobLinks.length > 0) {
@@ -112,7 +112,7 @@ async function main(): Promise<void> {
 		return;
 	}
 
-	await waitTime(30, 60);
+	await waitTime();
 	console.log('🔵 Starting search for roles...');
 	const jobLinks = await getJobLinks();
 
@@ -175,7 +175,7 @@ async function main(): Promise<void> {
 			}
 		}
 
-		await waitTime(10, 20);
+		await waitTime(5, 10);
 		await pageHandler.closeMostRecentPage();
 	}
 
@@ -271,7 +271,7 @@ async function main(): Promise<void> {
 
 					await textArea.type(msg);
 					console.log('✅ Entered message into application input box.');
-					await waitTime(2, 5);
+					await waitTime(1, 3);
 					const sendBtn = await findBtnByTxt(pageHandler.getMostRecentPage(), 'Send');
 
 					if (!(sendBtn instanceof ElementHandle)) {
