@@ -70,18 +70,21 @@ This project automates the process of applying to jobs on [WorkAtAStartup](https
 .
 ├── .env                 # Environment variables
 ├── .gitignore           # Git ignore file
+├── LICENSE.txt          # License information
 ├── main.ts              # Entry point of the application
 ├── package.json         # Project metadata and scripts
 ├── tsconfig.json        # TypeScript configuration
-├── scripts/             # Contains all the core modules
-│   ├── aiUtils.ts       # OpenAI integration for generating messages
-│   ├── Company.ts       # Represents a company and its jobs
-│   ├── debug.ts         # Debugging utilities
-│   ├── Job.ts           # Represents a job listing
-│   ├── PageHandler.ts   # Puppeteer browser and page management
-│   ├── parse.ts         # Functions for parsing web elements
-│   ├── prompts.ts       # Predefined prompts for OpenAI
-│   ├── utils.ts         # Utility functions (e.g., wait time, console prompts)
+├── tsconfig.tsbuildinfo # TypeScript build information
+└── scripts/             # Contains all the core modules
+    ├── classes/         # Classes representing core entities
+    │   ├── Company.ts   # Represents a company and its Jobs
+    │   ├── Job.ts       # Represents a job listing
+    │   └── PageHandler.ts # Puppeteer browser and page management
+    ├── aiUtils.ts       # OpenAI integration for generating messages
+    ├── debugUtils.ts    # Debugging utilities
+    ├── parseUtils.ts    # Functions for parsing web elements
+    ├── prompts.ts       # Predefined prompts for OpenAI
+    └── utils.ts         # Utility functions (e.g., wait time, console prompts)
 ```
 
 ## Environment Variables
