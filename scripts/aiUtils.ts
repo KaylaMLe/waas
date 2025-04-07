@@ -1,7 +1,7 @@
 import fs from 'fs';
 import OpenAI from 'openai';
 
-import Job from './Job.js';
+import Job from './classes/Job.js';
 import { appMethodPrompt, appMsgPrompt, jobComparePrompt } from './prompts.js';
 
 const openai = new OpenAI();
@@ -29,6 +29,11 @@ export async function getResponse(prompt: string): Promise<string | null> {
  * @returns a promise that resolves to the model's response as a string, or null if an error occurs
  */
 export async function getResponseWithFile(prompt: string, filePath: string): Promise<string | null> {
+	if (!fs.existsSync(filePath)) {
+		console.log(`⚠️ File not found: ${filePath}`);
+		return null;
+	}
+
 	const pdfData = fs.readFileSync(filePath);
 	const base64Pdf = pdfData.toString('base64');
 

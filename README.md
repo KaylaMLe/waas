@@ -33,7 +33,6 @@ This project automates the process of applying to jobs on [WorkAtAStartup](https
 
 3. Create a `.env` file in the root directory and configure it with your credentials:
    ```env
-   YCNAME=Your Name
    YCUSER=Your Y Combinator Username
    YCPSWD=Your Y Combinator Password
    SEARCH_URL="https://www.workatastartup.com/companies?..."
@@ -70,23 +69,25 @@ This project automates the process of applying to jobs on [WorkAtAStartup](https
 .
 ├── .env                 # Environment variables
 ├── .gitignore           # Git ignore file
+├── LICENSE.txt          # License information
 ├── main.ts              # Entry point of the application
 ├── package.json         # Project metadata and scripts
 ├── tsconfig.json        # TypeScript configuration
-├── scripts/             # Contains all the core modules
-│   ├── aiUtils.ts       # OpenAI integration for generating messages
-│   ├── Company.ts       # Represents a company and its jobs
-│   ├── debug.ts         # Debugging utilities
-│   ├── Job.ts           # Represents a job listing
-│   ├── PageHandler.ts   # Puppeteer browser and page management
-│   ├── parse.ts         # Functions for parsing web elements
-│   ├── prompts.ts       # Predefined prompts for OpenAI
-│   ├── utils.ts         # Utility functions (e.g., wait time, console prompts)
+├── tsconfig.tsbuildinfo # TypeScript build information
+└── scripts/             # Contains all the core modules
+    ├── classes/         # Classes representing core entities
+    │   ├── Company.ts   # Represents a company and its Jobs
+    │   ├── Job.ts       # Represents a job listing
+    │   └── PageHandler.ts # Puppeteer browser and page management
+    ├── aiUtils.ts       # OpenAI integration for generating messages
+    ├── debugUtils.ts    # Debugging utilities
+    ├── parseUtils.ts    # Functions for parsing web elements
+    ├── prompts.ts       # Predefined prompts for OpenAI
+    └── utils.ts         # Utility functions (e.g., wait time, console prompts)
 ```
 
 ## Environment Variables
 
-- `YCNAME`: Your first name as displayed next to your profile picture.
 - `YCUSER`: Your WorkAtAStartup account's username or email address.
 - `YCPSWD`: Your WorkAtAStartup account's password.
   - You can also use your Hacker News credentials to login.

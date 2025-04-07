@@ -1,11 +1,11 @@
 import { ElementHandle, TimeoutError } from 'puppeteer';
 
 import { checkAppMethod, compareJobs, writeAppMsg } from './scripts/aiUtils.js';
-import Company from './scripts/Company.js';
-import Job from './scripts/Job.js';
-import { PageHandler } from './scripts/PageHandler.js';
-import { findBtnByTxt, findDivBtnByClass, findDivByIdPrefix, findInputById, getAllJobLinks } from './scripts/parse.js';
-import { consolePrompt, loadApplied, waitTime } from './scripts/utils.js';
+import Company from './scripts/classes/Company.js';
+import Job from './scripts/classes/Job.js';
+import { PageHandler } from './scripts/classes/PageHandler.js';
+import { findBtnByTxt, findDivBtnByClass, findDivByIdPrefix, findInputById, getAllJobLinks } from './scripts/parseUtils.js';
+import { consolePrompt, loadApplied, loadLogin, waitTime } from './scripts/utils.js';
 
 const pageHandler = new PageHandler();
 
@@ -23,10 +23,15 @@ async function loggingIn(): Promise<boolean> {
 		return false;
 	}
 
-	await waitTime();
-
 	const ids = ['ycid-input', 'password-input'];
-	const login = [process.env.YCUSER || 'foo', process.env.YCPSWD || 'bar'];
+	const login = loadLogin();
+
+	if (!login) {
+		console.log('⚠️ Login credentials not loaded properly.');
+		return false;
+	}
+
+	await waitTime();
 
 	try {
 		for (let index = 0; index < ids.length; index++) {
@@ -56,7 +61,7 @@ async function loggingIn(): Promise<boolean> {
 
 	try {
 		console.log('🔵 Waiting for the page to load...');
-		await pageHandler.getMostRecentPage().waitForSelector('body', { timeout: 5000 });
+		await pageHandler.getMostRecentPage().waitForSelector('a[href="/application"]', { timeout: 5000 });
 	} catch (error) {
 		if (error instanceof TimeoutError) {
 			console.error('⚠️ TimeoutError: Page load took longer than 5 seconds');
@@ -67,9 +72,8 @@ async function loggingIn(): Promise<boolean> {
 		return false;
 	}
 
-	const name = process.env.YCNAME || 'My profile';
 	const nameFound = await pageHandler.getMostRecentPage().evaluate(() =>
-		document.body.innerText.includes(name)
+		document.body.innerText.includes('My profile')
 	);
 
 	return nameFound;
@@ -81,6 +85,11 @@ async function loggingIn(): Promise<boolean> {
  * @returns an array of links to each job listing
  */
 async function getJobLinks(): Promise<string[]> {
+	if (!process.env.SEARCH_URL) {
+		console.warn('⚠️ No SEARCH_URL found in environment variables.');
+		await consolePrompt('🔵 Press CTRL + C to quit or any key to use the default search URL.');
+	}
+
 	const searchUrl = process.env.SEARCH_URL || 'https://www.workatastartup.com/companies';
 	const searchPageOpened = await pageHandler.openUrl(searchUrl);
 
@@ -95,8 +104,6 @@ async function getJobLinks(): Promise<string[]> {
 		console.log(`✅ Found ${jobLinks.length} job links.`);
 	} else {
 		console.log('❌ No job links found.');
-		const bodyText = await pageHandler.getMostRecentPage().evaluate(() => document.body.innerText);
-		console.log('Body text:\n', bodyText);
 	}
 
 	return jobLinks;
@@ -108,7 +115,7 @@ async function main(): Promise<void> {
 	if (loggedIn) {
 		console.log('✅ Logged in');
 	} else {
-		console.log('❌ Login unsuccessful');
+		console.error('❌ Login unsuccessful');
 		return;
 	}
 
