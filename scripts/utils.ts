@@ -79,6 +79,7 @@ export function loadApplied(): Record<string, Company> {
 	const applied = process.env.APPLIED || '';
 
 	if (applied === '') {
+		console.warn('❌ No companies (APPLIED) found in environment variables.');
 		return {};
 	}
 
