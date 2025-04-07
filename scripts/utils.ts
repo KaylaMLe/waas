@@ -55,14 +55,14 @@ export function loadLogin(): string[] | null {
 	const userName = process.env.YCUSER;
 
 	if (!userName) {
-		console.log('⚠️ No username found in environment variables.');
+		console.log('⚠️ No username (YCUSER) found in environment variables.');
 		return null;
 	}
 
 	const password = process.env.YCPSWD;
 
 	if (!password) {
-		console.log('⚠️ No password found in environment variables.');
+		console.log('⚠️ No password (YCPSWD) found in environment variables.');
 		return null;
 	}
 

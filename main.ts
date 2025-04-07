@@ -85,6 +85,11 @@ async function loggingIn(): Promise<boolean> {
  * @returns an array of links to each job listing
  */
 async function getJobLinks(): Promise<string[]> {
+	if (!process.env.SEARCH_URL) {
+		console.warn('⚠️ No SEARCH_URL found in environment variables.');
+		await consolePrompt('🔵 Press CTRL + C to quit or any key to use the default search URL.');
+	}
+
 	const searchUrl = process.env.SEARCH_URL || 'https://www.workatastartup.com/companies';
 	const searchPageOpened = await pageHandler.openUrl(searchUrl);
 
