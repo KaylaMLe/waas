@@ -33,7 +33,6 @@ This project automates the process of applying to jobs on [WorkAtAStartup](https
 
 3. Create a `.env` file in the root directory and configure it with your credentials:
    ```env
-   YCNAME=Your Name
    YCUSER=Your Y Combinator Username
    YCPSWD=Your Y Combinator Password
    SEARCH_URL="https://www.workatastartup.com/companies?..."
@@ -89,7 +88,6 @@ This project automates the process of applying to jobs on [WorkAtAStartup](https
 
 ## Environment Variables
 
-- `YCNAME`: Your first name as displayed next to your profile picture.
 - `YCUSER`: Your WorkAtAStartup account's username or email address.
 - `YCPSWD`: Your WorkAtAStartup account's password.
   - You can also use your Hacker News credentials to login.

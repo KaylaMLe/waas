@@ -23,28 +23,6 @@ export async function waitTime(rangeMin: number = 20, rangeMax: number = 30): Pr
 }
 
 /**
- * Loads the environment variable of companies already applied to
- * 
- * @returns A Record with company names as keys and Company objects as values.
- *          If no companies are found, an empty object is returned.
- */
-export function loadApplied(): Record<string, Company> {
-	const applied = process.env.APPLIED || '';
-
-	if (applied === '') {
-		return {};
-	}
-
-	const companyRecords: Record<string, Company> = {};
-
-	applied.split(',').forEach(company => {
-		companyRecords[company] = new Company(true);
-	});
-
-	return companyRecords;
-}
-
-/**
  * Prompts the user for input in the console and returns the trimmed response.
  * 
  * @param prompt - The prompt to display to the user.
@@ -66,4 +44,49 @@ export async function consolePrompt(prompt: string): Promise<string> {
 	});
 
 	return answer;
+}
+
+/**
+ * Loads the environment variable of the login credentials
+ * 
+ * @returns An array with username and password. If either credential is not found, null is returned.
+ */
+export function loadLogin(): string[] | null {
+	const userName = process.env.YCUSER;
+
+	if (!userName) {
+		console.log('⚠️ No username found in environment variables.');
+		return null;
+	}
+
+	const password = process.env.YCPSWD;
+
+	if (!password) {
+		console.log('⚠️ No password found in environment variables.');
+		return null;
+	}
+
+	return [userName, password];
+}
+
+/**
+ * Loads the environment variable of companies already applied to
+ * 
+ * @returns A Record with company names as keys and Company objects as values.
+ *          If no companies are found, an empty object is returned.
+ */
+export function loadApplied(): Record<string, Company> {
+	const applied = process.env.APPLIED || '';
+
+	if (applied === '') {
+		return {};
+	}
+
+	const companyRecords: Record<string, Company> = {};
+
+	applied.split(',').forEach(company => {
+		companyRecords[company] = new Company(true);
+	});
+
+	return companyRecords;
 }
