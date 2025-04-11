@@ -1,6 +1,8 @@
 import fs from 'fs';
 import { Page } from 'puppeteer';
 
+import logger from './logger';
+
 /**
  * Saves the DOM content of the given Puppeteer page to an HTML file.
  * 
@@ -11,4 +13,9 @@ import { Page } from 'puppeteer';
 export async function saveDom(page: Page, fileName: string): Promise<void> {
 	const pageContent = await page.content();
 	fs.writeFileSync(fileName + '.html', pageContent);
+}
+
+export async function dumpBodyText(page: Page): Promise<void> {
+	const bodyText = await page.evaluate(() => document.body.innerText);
+	logger.log('dump', bodyText);
 }

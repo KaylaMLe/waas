@@ -1,6 +1,13 @@
 import { createLogger, format, transports } from 'winston';
 
 const logger = createLogger({
+	levels: {
+		error: 0,
+		warn: 1,
+		info: 2,
+		debug: 3,
+		dump: 4,
+	},
 	level: process.env.LOG_LEVEL || 'info',
 	format: format.combine(
 		format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),

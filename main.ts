@@ -2,6 +2,7 @@ import { ElementHandle, TimeoutError } from 'puppeteer';
 
 import { checkAppMethod, compareJobs, writeAppMsg } from './scripts/aiUtils.js';
 import Company from './scripts/classes/Company.js';
+import { dumpBodyText } from './scripts/debugUtils.js';
 import Job from './scripts/classes/Job.js';
 import logger from './scripts/logger.js';
 import { PageHandler } from './scripts/classes/PageHandler.js';
@@ -20,7 +21,7 @@ async function loggingIn(): Promise<boolean> {
 	const pageOpened = await pageHandler.openUrl(loginUrl);
 
 	if (!pageOpened) {
-		logger.error('❌ Login page not opened.');
+		logger.log('error', '❌ Login page not opened.');
 		return false;
 	}
 
@@ -28,7 +29,7 @@ async function loggingIn(): Promise<boolean> {
 	const login = loadLogin();
 
 	if (!login) {
-		logger.error('⚠️ Login credentials not loaded properly.');
+		logger.log('error', '⚠️ Login credentials not loaded properly.');
 		return false;
 	}
 
@@ -39,14 +40,14 @@ async function loggingIn(): Promise<boolean> {
 			const found = await findInputById(pageHandler.getMostRecentPage(), ids[index]);
 			if (found) {
 				await found.type(login[index]);
-				logger.debug(`✅ Entered value into input with ID: "${ids[index]}"`);
+				logger.log('debug', `✅ Entered value into input with ID: "${ids[index]}"`);
 				await waitTime(1, 3);
 			} else {
 				return false;
 			}
 		}
 	} catch (error) {
-		logger.error('⚠️ Unexpected error:', error);
+		logger.log('error', '⚠️ Unexpected error:', error);
 		return false;
 	}
 
@@ -58,16 +59,16 @@ async function loggingIn(): Promise<boolean> {
 	}
 
 	await loginBtn.click();
-	logger.debug('✅ Clicked the login button.');
+	logger.log('debug', '✅ Clicked the login button.');
 
 	try {
-		logger.debug('🔵 Waiting for the page to load...');
+		logger.log('debug', '🔵 Waiting for the page to load...');
 		await pageHandler.getMostRecentPage().waitForSelector('a[href="/application"]', { timeout: 5000 });
 	} catch (error) {
 		if (error instanceof TimeoutError) {
-			logger.error('⚠️ TimeoutError: Page load took longer than 5 seconds');
+			logger.log('error', '⚠️ TimeoutError: Page load took longer than 5 seconds');
 		} else {
-			logger.error('⚠️ Unexpected error:', error);
+			logger.log('error', '⚠️ Unexpected error:', error);
 		}
 
 		return false;
@@ -87,7 +88,7 @@ async function loggingIn(): Promise<boolean> {
  */
 async function getJobLinks(): Promise<string[]> {
 	if (!process.env.SEARCH_URL) {
-		logger.warn('⚠️ No SEARCH_URL found in environment variables.');
+		logger.log('warn', '⚠️ No SEARCH_URL found in environment variables.');
 		await consolePrompt('🔵 Press CTRL + C to quit or any key to use the default search URL.');
 	}
 
@@ -102,9 +103,9 @@ async function getJobLinks(): Promise<string[]> {
 	const jobLinks = await getAllJobLinks(pageHandler.getMostRecentPage());
 
 	if (jobLinks.length > 0) {
-		logger.info(`✅ Found ${jobLinks.length} job links.`);
+		logger.log('info', `✅ Found ${jobLinks.length} job links.`);
 	} else {
-		logger.error('❌ No job links found.');
+		logger.log('error', '❌ No job links found.');
 	}
 
 	return jobLinks;
@@ -114,14 +115,14 @@ async function main(): Promise<void> {
 	const loggedIn = await loggingIn();
 
 	if (loggedIn) {
-		logger.info('✅ Logged in');
+		logger.log('info', '✅ Logged in');
 	} else {
-		logger.error('❌ Login unsuccessful');
+		logger.log('error', '❌ Login unsuccessful');
 		return;
 	}
 
 	await waitTime();
-	logger.debug('🔵 Starting search for roles...');
+	logger.log('debug', '🔵 Starting search for roles...');
 	const jobLinks = await getJobLinks();
 
 	if (jobLinks.length <= 0) {
@@ -132,36 +133,37 @@ async function main(): Promise<void> {
 	const companyRecords = loadApplied();
 
 	for (const link of jobLinks) {
-		logger.info(`\n${link}`);
+		logger.log('info', `\n${link}`);
 		const jobPageOpened = await pageHandler.openUrl(link);
 
 		if (!jobPageOpened) {
-			logger.error('❌ Skipping this job page.');
+			logger.log('error', '❌ Skipping this job page.');
 			continue;
 		}
 
 		const jobText = await pageHandler.getMostRecentPage().evaluate(() => document.body.innerText);
+		logger.log('dump', jobText);
 		const jobLines = jobText.split('\n');
 
 		// if the job description is too short, it won't have the expected info in the expected places
 		if (jobLines.length < 11) {
-			logger.error('❌ This job description is too short! Is it a valid job description?');
+			logger.log('error', '❌ This job description is too short! Is it a valid job description?');
 			continue;
 		}
 
 		// check if I've already applied to a job at this company
 		const position = jobLines[10];// the eleventh line is expected to be the job title and company's name
-		logger.info(`🟪 ${position}`);
+		logger.log('info', `🟪 ${position}`);
 		const companyName = position.split(' at ')[1];
 
 		// if the company name couldn't be parsed or if the company has already been applied to, skip this job
 		if (companyName && companyName in companyRecords && companyRecords[companyName].applied) {
-			logger.info(`❌ Either company name not found or already applied to ${companyName}`);
+			logger.log('info', `❌ Either company name not found or already applied to ${companyName}`);
 		} else {
 			const applyBtn = await findDivByIdPrefix(pageHandler.getMostRecentPage(), 'ApplyButton');
 
 			if (!applyBtn) {
-				logger.error('❌ Skipping this job page.');
+				logger.log('error', '❌ Skipping this job page.');
 				continue;
 			}
 
@@ -176,10 +178,10 @@ async function main(): Promise<void> {
 			}
 
 			if (hasApplied) {
-				logger.debug('❌ Already applied to this job.');
+				logger.log('debug', '❌ Already applied to this job.');
 			} else {
 				companyRecords[companyName].jobs.push(new Job(link, jobText));
-				logger.debug('✅ Job added to company record.');
+				logger.log('debug', '✅ Job added to company record.');
 			}
 		}
 
@@ -204,13 +206,13 @@ async function main(): Promise<void> {
 			}
 
 			if (!bestJob) {
-				logger.error('⚠️ An error occurred while comparing jobs. Skipping this company.');
+				logger.log('error', '⚠️ An error occurred while comparing jobs. Skipping this company.');
 			} else {
-				logger.info(`🟩 Best job for ${companyName}: ${bestJob.link}`);
+				logger.log('info', `🟩 Best job for ${companyName}: ${bestJob.link}`);
 				const appMethod = await checkAppMethod(bestJob.desc);
 
 				if (!appMethod) {
-					logger.error('❌ Skipping this job.');
+					logger.log('error', '❌ Skipping this job.');
 				} else if (appMethod === 'none') {
 					// generate a message to send to the company
 					let msg = await writeAppMsg(bestJob.desc);
@@ -228,7 +230,7 @@ async function main(): Promise<void> {
 
 						if (userInput === 'Y') {
 							approved = true;
-							logger.debug('✅ Message approved.');
+							logger.log('debug', '✅ Message approved.');
 						} else {
 							// make sure the message is not instantly approved if the user enters an empty message
 							approved = false;
@@ -240,7 +242,7 @@ async function main(): Promise<void> {
 					const openedJobPage = await pageHandler.openUrl(bestJob.link);
 
 					if (!openedJobPage) {
-						logger.error('❌ Skipping this job application.');
+						logger.log('error', '❌ Skipping this job application.');
 						continue;
 					}
 
@@ -248,24 +250,24 @@ async function main(): Promise<void> {
 					const applyBtn = await findDivByIdPrefix(pageHandler.getMostRecentPage(), 'ApplyButton');
 
 					if (!applyBtn) {
-						logger.error('❌ Skipping this job application.');
+						logger.log('error', '❌ Skipping this job application.');
 						continue;
 					}
 
 					await applyBtn.click();
-					logger.debug('✅ Clicked the apply button.');
+					logger.log('debug', '✅ Clicked the apply button.');
 
 					// wait up to three seconds for a textarea element to appear in the dom
 					try {
 						await pageHandler.getMostRecentPage().waitForSelector('textarea', { timeout: 3000 });
 					} catch (error) {
 						if (error instanceof TimeoutError) {
-							logger.error('⚠️ TimeoutError: The application modal did not appear within 3 seconds');
+							logger.log('error', '⚠️ TimeoutError: The application modal did not appear within 3 seconds');
 						} else {
-							logger.error('⚠️ Unexpected error:', error);
+							logger.log('error', '⚠️ Unexpected error:', error);
 						}
 
-						logger.error('❌ Skipping this job application.');
+						logger.log('error', '❌ Skipping this job application.');
 						continue;
 					}
 
@@ -273,22 +275,22 @@ async function main(): Promise<void> {
 					const textArea = await pageHandler.getMostRecentPage().$('textarea');
 
 					if (!textArea) {
-						logger.error('❌ Could not find the application input box. Skipping this job application.');
+						logger.log('error', '❌ Could not find the application input box. Skipping this job application.');
 						continue;
 					}
 
 					await textArea.type(msg);
-					logger.debug('✅ Entered message into application input box.');
+					logger.log('debug', '✅ Entered message into application input box.');
 					await waitTime(1, 3);
 					const sendBtn = await findBtnByTxt(pageHandler.getMostRecentPage(), 'Send');
 
 					if (!(sendBtn instanceof ElementHandle)) {
-						logger.error('❌ Could not find the send button. Skipping this job application.');
+						logger.log('error', '❌ Could not find the send button. Skipping this job application.');
 						continue;
 					}
 
 					await sendBtn.click();
-					logger.debug('✅ Clicked the send button.');
+					logger.log('debug', '✅ Clicked the send button.');
 
 					try {
 						await pageHandler.getMostRecentPage().waitForFunction(
@@ -299,16 +301,16 @@ async function main(): Promise<void> {
 					}
 					catch (error) {
 						if (error instanceof TimeoutError) {
-							logger.error('⚠️ TimeoutError: The post-application page did not load within 5 seconds.');
+							logger.log('error', '⚠️ TimeoutError: The post-application page did not load within 5 seconds.');
 						} else {
-							logger.error('⚠️ Unexpected error:', error);
+							logger.log('error', '⚠️ Unexpected error:', error);
 						}
 
-						logger.error('❌ Skipping this job application.');
+						logger.log('error', '❌ Skipping this job application.');
 						continue;
 					}
 
-					logger.info('🎉 Application sent successfully!');
+					logger.log('info', '🎉 Application sent successfully!');
 					appliedCompanies.push(companyName);
 					pageHandler.closeMostRecentPage();
 				}
@@ -320,15 +322,15 @@ async function main(): Promise<void> {
 
 	// after all the jobs have been applied to, log the new list of applied companies to the console
 	const appliedCompaniesStr = appliedCompanies.length > 0 ? appliedCompanies.join(',') : 'none';
-	logger.info(`\n🔵 You have applied to the following companies:\n${appliedCompaniesStr}`);
+	logger.log('info', `\n🔵 You have applied to the following companies:\n${appliedCompaniesStr}`);
 }
 
 try {
 	await main();
 } catch (error) {
-	logger.error('⚠️ An unexpected error occurred:', error);
+	logger.log('error', '⚠️ An unexpected error occurred:', error);
 } finally {
 	// close the browser and all pages
-	logger.debug('🔵 Closing the browser...');
+	logger.log('debug', '🔵 Closing the browser...');
 	await pageHandler.closeBrowser();
 }
