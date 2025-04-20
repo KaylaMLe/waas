@@ -3,6 +3,7 @@ import OpenAI from 'openai';
 
 import Job from './classes/Job.js';
 import { appMethodPrompt, appMsgPrompt, jobComparePrompt } from './prompts.js';
+import logger from './logger.js';
 
 const openai = new OpenAI();
 
@@ -30,7 +31,7 @@ export async function getResponse(prompt: string): Promise<string | null> {
  */
 export async function getResponseWithFile(prompt: string, filePath: string): Promise<string | null> {
 	if (!fs.existsSync(filePath)) {
-		console.log(`⚠️ File not found: ${filePath}`);
+		logger.log('warn', `❌ File not found: ${filePath}`);
 		return null;
 	}
 
@@ -72,9 +73,9 @@ export async function checkAppMethod(jobText: string): Promise<string | null> {
 	const methodResponse = await getResponse(appMethodPrompt + jobText);
 
 	if (methodResponse) {
-		console.log(`🟪 Application method: ${methodResponse}`);
+		logger.log('info', `🟪 Application method: ${methodResponse}`);
 	} else {
-		console.log('⚠️ Failed to retrieve application method.');
+		logger.log('warn', '❌ Failed to retrieve application method.');
 	}
 
 	return methodResponse;
@@ -93,7 +94,7 @@ export async function compareJobs(jobs: Job[]): Promise<Job | null> {
 	const linkResponse = await getResponseWithFile(comparePrompt, process.env.RESUME_PATH || 'resume.pdf');
 
 	if (!linkResponse) {
-		console.log('⚠️ Failed to retrieve job comparison.');
+		logger.log('warn', '❌ Failed to retrieve job comparison.');
 		return null;
 	} else {
 		const bestJob = jobs.find(job => job.link === linkResponse.trim());
@@ -101,7 +102,7 @@ export async function compareJobs(jobs: Job[]): Promise<Job | null> {
 		if (bestJob) {
 			return bestJob;
 		} else {
-			console.log('❌ No job matching the given link was found. Was the AI response valid?\n\n' + linkResponse);
+			logger.log('warn', `❌ No job matching the given link was found. Was the AI response valid?\n\n${linkResponse}`);
 			return null;
 		}
 	}
@@ -118,9 +119,9 @@ export async function writeAppMsg(jobDesc: string): Promise<string | null> {
 	const msgResponse = await getResponseWithFile(prompt, process.env.RESUME_PATH || 'resume.pdf');
 
 	if (msgResponse) {
-		console.log(`🟩 Application message: ${msgResponse}`);
+		logger.log('info', `🟩 Application message: ${msgResponse}`);
 	} else {
-		console.log('⚠️ Failed to retrieve application message.');
+		logger.log('warn', '❌ Failed to retrieve application message.');
 	}
 
 	return msgResponse;

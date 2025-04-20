@@ -1,5 +1,7 @@
 import { ElementHandle, Page } from 'puppeteer';
 
+import logger from './logger.js';
+
 /**
  * Finds an input element by its ID on the given Puppeteer page.
  * 
@@ -12,14 +14,14 @@ export async function findInputById(page: Page, id: string): Promise<ElementHand
 		const inputElement = await page.$(`#${id}`);
 
 		if (inputElement) {
-			console.log(`✅ Found input element with ID: "${id}"`);
+			logger.log('debug', `✅ Found input element with ID: "${id}"\n`);
 		} else {
-			console.log(`❌ No input element found with ID: "${id}"`);
+			logger.log('warn', `❌ No input element found with ID: "${id}"\n`);
 		}
 
 		return inputElement;
 	} catch (error) {
-		console.error('⚠️ Error:', error);
+		logger.log('error', `⚠️ Unexpected error: ${error}`);
 		return null;
 	}
 }
@@ -36,24 +38,24 @@ export async function findDivBtnByClass(page: Page, className: string): Promise<
 		const foundDiv = await page.$(`div.${className}`);
 
 		if (foundDiv) {
-			console.log(`✅ Found div with class: "${className}"`);
+			logger.log('debug', `✅ Found div with class: "${className}"\n`);
 		} else {
-			console.log(`❌ No div with class: "${className}"`);
+			logger.log('warn', `❌ No div with class: "${className}"\n`);
 			return null;
 		}
 
 		const btnElement = await foundDiv.$('button');
 
 		if (btnElement) {
-			console.log('✅ Found button element within div');
+			logger.log('debug', '✅ Found button element within div\n');
 		} else {
-			console.log('❌ No button element found within div');
+			logger.log('warn', '❌ No button element found within div\n');
 			return null;
 		}
 
 		return btnElement;
 	} catch (error) {
-		console.error('⚠️ Error:', error);
+		logger.log('error', `⚠️ Error: ${error}`);
 		return null;
 	}
 }
@@ -88,14 +90,14 @@ export async function findDivByIdPrefix(page: Page, idPrefix: string): Promise<E
 		const divElement = await page.$(`div[id^="${idPrefix}"]`);
 
 		if (divElement) {
-			console.log(`✅ Found div element with ID starting with: "${idPrefix}"`);
+			logger.log('debug', `✅ Found div element with ID starting with: "${idPrefix}"\n`);
 			return divElement;
 		} else {
-			console.log(`❌ No div element found with ID starting with: "${idPrefix}"`);
+			logger.log('warn', `❌ No div element found with ID starting with: "${idPrefix}"\n`);
 			return null;
 		}
 	} catch (error) {
-		console.error('⚠️ Unexpected error:', error);
+		logger.log('error', `⚠️ Unexpected error: ${error}`);
 		return null;
 	}
 }
@@ -107,14 +109,14 @@ export async function findBtnByTxt(page: Page, innerText: string): Promise<Eleme
 		}, innerText);
 
 		if (btnElement instanceof ElementHandle) {
-			console.log(`✅ Found button element with text: "${innerText}"`);
+			logger.log('debug', `✅ Found button element with text: "${innerText}"\n`);
 			return btnElement;
 		} else {
-			console.log(`❌ No button element found with text: "${innerText}"`);
+			logger.log('warn', `❌ No button element found with text: "${innerText}"\n`);
 			return null;
 		}
 	} catch (error) {
-		console.error('⚠️ Error:', error);
+		logger.log('error', `⚠️ Error: ${error}`);
 		return null;
 	}
 }

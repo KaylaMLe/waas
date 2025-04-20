@@ -1,5 +1,7 @@
 import puppeteer, { Browser, Page } from 'puppeteer';
 
+import logger from '../logger.js';
+
 export class PageHandler {
 	private browser: Browser | null = null;
 	private browserLoading: Promise<void> | null = null;
@@ -23,24 +25,24 @@ export class PageHandler {
 	 */
 
 	public async openUrl(url: string): Promise<boolean> {
-		await this.browserLoading; // Wait for the browser to initialize
+		await this.browserLoading;
 
 		if (!this.browser) {
-			console.error('❌ Browser is not initialized.');
+			logger.log('error', '⚠️ Browser is not initialized.');
 			return false;
 		}
 
 		const page = await this.browser.newPage();
 
 		try {
-			console.log(`🔵 Opening ${url}...`);
+			logger.log('debug', `🔵 Opening ${url}...`);
 			await page.goto(url, { waitUntil: 'domcontentloaded' });
 			this.pages.push(page);
 
-			console.log('✅ Page opened successfully.');
+			logger.log('debug', '✅ Page opened successfully.');
 			return true;
 		} catch (error) {
-			console.error('⚠️ Error:', error);
+			logger.log('error', '⚠️ Unexpected error:', error);
 			await page.close();
 
 			return false;
@@ -49,13 +51,6 @@ export class PageHandler {
 
 	public getMostRecentPage(): Page {
 		return this.pages[this.pages.length - 1];
-	}
-
-	public async closePage(index: number): Promise<void> {
-		if (this.pages[index]) {
-			await this.pages[index].close();
-			this.pages.splice(index, 1);
-		}
 	}
 
 	public async closeMostRecentPage(): Promise<void> {

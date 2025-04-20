@@ -1,6 +1,7 @@
 import { createInterface } from 'readline';
 
 import Company from './classes/Company.js';
+import logger from './logger.js';
 
 /**
  * Waits for a random amount of time between rangeMin and rangeMax seconds.
@@ -13,12 +14,12 @@ export async function waitTime(rangeMin: number = 20, rangeMax: number = 30): Pr
 	const rangeDiff = rangeMax - rangeMin;
 
 	if (rangeDiff < 0) {
-		console.log('❌ rangeMin is greater than rangeMax. Skipping this wait.\n');
+		logger.log('error', '⚠️ rangeMin is greater than rangeMax. Skipping this wait.');
 		return;
 	}
 
 	const seconds = Math.floor(Math.random() * (rangeDiff + 1)) + rangeMin;
-	console.log(`⏳ Waiting for ${seconds} seconds...\n`);
+	logger.log('debug', `⏳ Waiting for ${seconds} seconds...\n`);
 	await new Promise(resolve => setTimeout(resolve, seconds * 1000));
 }
 
@@ -55,14 +56,14 @@ export function loadLogin(): string[] | null {
 	const userName = process.env.YCUSER;
 
 	if (!userName) {
-		console.log('⚠️ No username (YCUSER) found in environment variables.');
+		logger.log('warn', '❌ No username (YCUSER) found in environment variables.');
 		return null;
 	}
 
 	const password = process.env.YCPSWD;
 
 	if (!password) {
-		console.log('⚠️ No password (YCPSWD) found in environment variables.');
+		logger.log('warn', '❌ No password (YCPSWD) found in environment variables.');
 		return null;
 	}
 
@@ -79,7 +80,7 @@ export function loadApplied(): Record<string, Company> {
 	const applied = process.env.APPLIED || '';
 
 	if (applied === '') {
-		console.warn('❌ No companies (APPLIED) found in environment variables.');
+		logger.log('warn', '❌ No companies (APPLIED) found in environment variables.');
 		return {};
 	}
 
