@@ -9,13 +9,20 @@ const logger = createLogger({
 		dump: 4,
 	},
 	level: process.env.LOG_LEVEL || 'info',
-	format: format.combine(
-		format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),
-		format.printf(({ timestamp, level, message }) => `[${timestamp}] ${level.toUpperCase()}: ${message}`)
-	),
 	transports: [
-		new transports.Console(), // Log to the console
-		new transports.File({ filename: 'app.log' }) // Log to a file
+		new transports.Console({
+			format: format.combine(
+				format.timestamp({ format: 'HH:mm:ss' }),
+				format.printf(({ timestamp, level, message }) => `[${timestamp}] ${level.toUpperCase()}: ${message}`)
+			)
+		}),
+		new transports.File({
+			filename: 'app.log',
+			format: format.combine(
+				format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),
+				format.printf(({ timestamp, level, message }) => `[${timestamp}] ${level.toUpperCase()}: ${message}`)
+			)
+		})
 	]
 });
 

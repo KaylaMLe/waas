@@ -1,7 +1,7 @@
 import fs from 'fs';
 import { Page } from 'puppeteer';
 
-import logger from './logger';
+import logger from './logger.js';
 
 /**
  * Saves the DOM content of the given Puppeteer page to an HTML file.
