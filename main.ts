@@ -63,10 +63,10 @@ async function loggingIn(): Promise<boolean> {
 
 	try {
 		logger.log('debug', '🔵 Waiting for the page to load...');
-		await pageHandler.getMostRecentPage().waitForSelector('a[href="/application"]', { timeout: 60000 });
+		await pageHandler.getMostRecentPage().waitForSelector('a[href="/application"]', { timeout: 30000 });
 	} catch (error) {
 		if (error instanceof TimeoutError) {
-			logger.log('error', '⚠️ TimeoutError: Page load took longer than 5 seconds');
+			logger.log('error', '⚠️ TimeoutError: Page load took longer than 30 seconds');
 			logger.log('dump', await dumpBodyText(pageHandler.getMostRecentPage()));
 		} else {
 			logger.log('error', '⚠️ Unexpected error:', error);
@@ -104,7 +104,7 @@ async function getJobLinks(): Promise<string[]> {
 	const jobLinks = await getAllJobLinks(pageHandler.getMostRecentPage());
 
 	if (jobLinks.length > 0) {
-		logger.log('info', `✅ Found ${jobLinks.length} job links.`);
+		logger.log('info', `✅ Found ${jobLinks.length} job links.\n`);
 	} else {
 		logger.log('error', '⚠️ No job links found.');
 	}
@@ -135,7 +135,7 @@ async function main(): Promise<void> {
 	const companyRecords = loadApplied();
 
 	for (const link of jobLinks) {
-		logger.log('info', `\n${link}`);
+		logger.log('info', `${link}`);
 		const jobPageOpened = await pageHandler.openUrl(link);
 
 		if (!jobPageOpened) {
@@ -159,8 +159,10 @@ async function main(): Promise<void> {
 		const companyName = position.split(' at ')[1];
 
 		// if the company name couldn't be parsed or if the company has already been applied to, skip this job
-		if (companyName && companyName in companyRecords && companyRecords[companyName].applied) {
-			logger.log('info', `❌ Either company name not found or already applied to ${companyName}`);
+		if (!companyName) {
+			logger.log('warn', '❌ Company name not found');
+		} else if (companyName in companyRecords && companyRecords[companyName].applied) {
+			logger.log('info', `❌ Already applied to ${companyName}`);
 		} else {
 			const applyBtn = await findDivByIdPrefix(pageHandler.getMostRecentPage(), 'ApplyButton');
 
@@ -180,13 +182,14 @@ async function main(): Promise<void> {
 			}
 
 			if (hasApplied) {
-				logger.log('debug', '❌ Already applied to this job.');
+				logger.log('info', '❌ Already applied to this job.');
 			} else {
 				companyRecords[companyName].jobs.push(new Job(link, jobText));
-				logger.log('debug', '✅ Job added to company record.');
+				logger.log('info', '✅ Job added to company record.');
 			}
 		}
 
+		console.log();
 		await waitTime(5, 10);
 		await pageHandler.closeMostRecentPage();
 	}
@@ -317,20 +320,20 @@ async function main(): Promise<void> {
 					pageHandler.closeMostRecentPage();
 				}
 			}
-		}
 
-		console.log();
+			console.log();
+		}
 	}
 
 	// after all the jobs have been applied to, log the new list of applied companies to the console
-	const appliedCompaniesStr = appliedCompanies.length > 0 ? appliedCompanies.join(',') : 'none';
-	logger.log('info', `\n🔵 You have applied to the following companies:\n${appliedCompaniesStr}`);
+	const appliedCompaniesStr = appliedCompanies.join(',');
+	logger.log('info', `✅ You have applied to the following companies:\n${appliedCompaniesStr}`);
 }
 
 try {
 	await main();
 } catch (error) {
-	logger.log('error', '⚠️ An unexpected error occurred:', error);
+	logger.log('error', '⚠️ Unexpected error:', error);
 } finally {
 	// close the browser and all pages
 	logger.log('debug', '🔵 Closing the browser...');
