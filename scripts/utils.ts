@@ -92,3 +92,18 @@ export function loadApplied(): Record<string, Company> {
 
 	return companyRecords;
 }
+
+/**
+ * A helper function to add a timeout to a promise.
+ * @param promise - The promise to wrap with a timeout.
+ * @param ms - The timeout duration in milliseconds.
+ * @returns A promise that rejects if the timeout is exceeded.
+ */
+export async function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
+	return Promise.race([
+		promise,
+		new Promise<T>((_, reject) =>
+			setTimeout(() => reject(new Error(`Operation timed out after ${ms} ms`)), ms)
+		),
+	]);
+}

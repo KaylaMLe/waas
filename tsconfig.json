@@ -3,6 +3,9 @@
 		"target": "ES2021",
 		"module": "ESNext",
 		"moduleResolution": "Node",
+		"types": [
+			"jest"
+		],
 		"lib": [
 			"ES2021",
 			"DOM"

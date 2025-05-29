@@ -1,11 +1,8 @@
 import fs from 'fs';
-import OpenAI from 'openai';
-
+import openai from './openAiClient.js'; // Import the singleton instance
 import Job from './classes/Job.js';
 import { appMethodPrompt, appMsgPrompt, jobComparePrompt } from './prompts.js';
 import logger from './logger.js';
-
-const openai = new OpenAI();
 
 /**
  * Get a response from OpenAI's GPT-4o-mini model.
@@ -19,7 +16,7 @@ export async function getResponse(prompt: string): Promise<string | null> {
 		messages: [{ role: 'user', content: prompt }],
 	});
 
-	return response.choices[0].message.content;
+	return response.choices[0]?.message?.content ?? null;
 }
 
 /**

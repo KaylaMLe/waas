@@ -154,7 +154,8 @@ async function main(): Promise<void> {
 		}
 
 		// check if I've already applied to a job at this company
-		const position = jobLines[10];// the eleventh line is expected to be the job title and company's name
+		const hasUnreadMessages = /^\d+$/.test(jobLines[3]);// the unread msg count is the 4th line if there are any
+		const position = hasUnreadMessages ? jobLines[11] : jobLines[10];// the eleventh line is expected to be the job title and company's name
 		logger.log('info', `🟪 ${position}`);
 		const companyName = position.split(' at ')[1];
 
@@ -264,7 +265,7 @@ async function main(): Promise<void> {
 
 					// wait up to three seconds for a textarea element to appear in the dom
 					try {
-						await pageHandler.getMostRecentPage().waitForSelector('textarea', { timeout: 3000 });
+						await pageHandler.getMostRecentPage().waitForSelector('textarea', { timeout: 3100 });
 					} catch (error) {
 						if (error instanceof TimeoutError) {
 							logger.log('error', '⚠️ TimeoutError: The application modal did not appear within 3 seconds');
