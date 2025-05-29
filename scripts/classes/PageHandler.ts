@@ -50,7 +50,11 @@ export class PageHandler {
 		}
 	}
 
-	public getMostRecentPage(): Page | undefined {
+	public getMostRecentPage(): Page {
+		if (this.pages.length === 0) {
+			throw new Error('⚠️ No pages are currently open.');
+		}
+
 		return this.pages[this.pages.length - 1];
 	}
 
