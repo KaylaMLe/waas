@@ -9,4 +9,7 @@ export default {
   moduleNameMapper: {
     '^(\\.{1,2}/.*)\\.js$': '$1', // Fixes ES module imports in TypeScript
   },
+  coveragePathIgnorePatterns: [
+    '<rootDir>/scripts/parseUtils.ts',
+  ],
 };
