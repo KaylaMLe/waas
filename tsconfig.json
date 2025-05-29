@@ -14,5 +14,10 @@
 		"esModuleInterop": true,
 		"skipLibCheck": true,
 		"forceConsistentCasingInFileNames": true
-	}
+	},
+	"exclude": [
+		"scripts/__tests__/**/*",
+		"coverage",
+		"node_modules"
+	]
 }
