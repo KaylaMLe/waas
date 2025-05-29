@@ -4,7 +4,7 @@
 		"build": "npx tsc --build",
 		"start": "node --env-file=.env ./main.js",
 		"clear": "powershell -Command \"Get-ChildItem -Path . -Recurse -Filter *.js | Where-Object { $_.FullName -notmatch 'node_modules' } | Remove-Item\"",
-		"test": "jest"
+		"test": "jest --coverage"
 	},
 	"dependencies": {
 		"@types/puppeteer": "^5.4.7",
