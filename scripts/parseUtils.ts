@@ -3,64 +3,6 @@ import { ElementHandle, Page } from 'puppeteer';
 import logger from './logger.js';
 
 /**
- * Finds an input element by its ID on the given Puppeteer page.
- * 
- * @param page - The Puppeteer page object to search within.
- * @param id - The ID of the input element to find.
- * @returns A promise that resolves to the input element if found, or null if not found.
- */
-export async function findInputById(page: Page, id: string): Promise<ElementHandle<Element> | null> {
-	try {
-		const inputElement = await page.$(`#${id}`);
-
-		if (inputElement) {
-			logger.log('debug', `✅ Found input element with ID: "${id}"\n`);
-		} else {
-			logger.log('warn', `❌ No input element found with ID: "${id}"\n`);
-		}
-
-		return inputElement;
-	} catch (error) {
-		logger.log('error', `⚠️ Unexpected error: ${error}`);
-		return null;
-	}
-}
-
-/**
- * Looks for a button within a div with the specified class on the page.
- * 
- * @param page - the page object to search
- * @param className - the class name to search for
- * @returns the button element in the div if found, null otherwise
- */
-export async function findDivBtnByClass(page: Page, className: string): Promise<ElementHandle<HTMLButtonElement> | null> {
-	try {
-		const foundDiv = await page.$(`div.${className}`);
-
-		if (foundDiv) {
-			logger.log('debug', `✅ Found div with class: "${className}"\n`);
-		} else {
-			logger.log('warn', `❌ No div with class: "${className}"\n`);
-			return null;
-		}
-
-		const btnElement = await foundDiv.$('button');
-
-		if (btnElement) {
-			logger.log('debug', '✅ Found button element within div\n');
-		} else {
-			logger.log('warn', '❌ No button element found within div\n');
-			return null;
-		}
-
-		return btnElement;
-	} catch (error) {
-		logger.log('error', `⚠️ Error: ${error}`);
-		return null;
-	}
-}
-
-/**
  * Parses the page for all anchor tags with hrefs starting with "https://www.workatastartup.com/jobs/"
  * 
  * @param page - The Puppeteer page object to search within.

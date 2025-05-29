@@ -1,4 +1,4 @@
-import { waitTime, consolePrompt, loadLogin, loadApplied } from '../utils';
+import { waitTime, consolePrompt, loadApplied } from '../utils';
 import Company from '../classes/Company';
 import logger from '../logger';
 
@@ -47,39 +47,6 @@ describe('utils.ts', () => {
 
 			expect(result).toBe('user input');
 			expect(mockQuestion).toHaveBeenCalledWith('Enter something: ', expect.any(Function));
-		});
-	});
-
-	describe('loadLogin', () => {
-		it('should return username and password if both are set in environment variables', () => {
-			process.env.YCUSER = 'testUser';
-			process.env.YCPSWD = 'testPassword';
-
-			const result = loadLogin();
-
-			expect(result).toEqual(['testUser', 'testPassword']);
-		});
-
-		it('should log a warning and return null if username is missing', () => {
-			const logSpy = jest.spyOn(logger, 'log');
-			delete process.env.YCUSER;
-			process.env.YCPSWD = 'testPassword';
-
-			const result = loadLogin();
-
-			expect(result).toBeNull();
-			expect(logSpy).toHaveBeenCalledWith('warn', '❌ No username (YCUSER) found in environment variables.');
-		});
-
-		it('should log a warning and return null if password is missing', () => {
-			const logSpy = jest.spyOn(logger, 'log');
-			process.env.YCUSER = 'testUser';
-			delete process.env.YCPSWD;
-
-			const result = loadLogin();
-
-			expect(result).toBeNull();
-			expect(logSpy).toHaveBeenCalledWith('warn', '❌ No password (YCPSWD) found in environment variables.');
 		});
 	});
 
