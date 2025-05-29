@@ -3,7 +3,7 @@
 	"scripts": {
 		"build": "npx tsc --build",
 		"start": "node --env-file=.env ./main.js",
-		"clear": "powershell -Command \"Get-ChildItem -Path . -Recurse -Filter *.js | Where-Object { $_.FullName -notmatch 'node_modules' } | Remove-Item\"",
+		"clear": "powershell -Command \"Get-ChildItem -Path . -Recurse -Filter *.js | Where-Object { $_.FullName -notmatch 'node_modules' -and $_.Name -ne 'jest.config.js' } | Remove-Item\"",
 		"test": "jest --coverage"
 	},
 	"dependencies": {
