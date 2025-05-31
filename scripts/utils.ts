@@ -77,10 +77,16 @@ export function loadApplied(): Record<string, Company> {
  * @returns A promise that rejects if the timeout is exceeded.
  */
 export async function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
+	let timeout: NodeJS.Timeout;
+
+	const timeoutPromise = new Promise<T>((_, reject) => {
+		timeout = setTimeout(() => {
+			reject(new Error(`Operation timed out after ${ms} ms`));
+		}, ms);
+	});
+
 	return Promise.race([
-		promise,
-		new Promise<T>((_, reject) =>
-			setTimeout(() => reject(new Error(`Operation timed out after ${ms} ms`)), ms)
-		),
+		promise.finally(() => clearTimeout(timeout)),
+		timeoutPromise,
 	]);
 }

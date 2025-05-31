@@ -19,9 +19,14 @@ export class PageHandler {
 		}
 	}
 
-	private async init() {
-		this.browser = await puppeteer.launch({ headless: this.headless });
-		return true;
+	private async init(): Promise<boolean> {
+		try {
+			this.browser = await puppeteer.launch({ headless: this.headless });
+			return true;
+		} catch (error) {
+			logger.log('error', `⚠️ Failed to initialize browser: ${error}`);
+			return false;
+		}
 	}
 
 	public async openUrl(url: string): Promise<boolean> {
