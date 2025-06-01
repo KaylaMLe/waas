@@ -4,7 +4,6 @@ This project automates the process of applying to jobs on [WorkAtAStartup](https
 
 ## Features
 
-- **Automated Login**: Logs into your Y Combinator account using credentials stored in the `.env` file.
 - **Job Scraping**: Collects job listings from the WorkAtAStartup search page.
 - **Application Tracking**: Tracks companies you've already applied to using the `APPLIED` environment variable.
 - **AI-Powered Messaging**: Uses OpenAI's GPT model to generate personalized application messages.
@@ -31,10 +30,8 @@ This project automates the process of applying to jobs on [WorkAtAStartup](https
    npm install
    ```
 
-3. Create a `.env` file in the root directory and configure it with your credentials:
+3. Create a `.env` file in the root directory and configure it with your environment variables:
    ```env
-   YCUSER=Your Y Combinator Username
-   YCPSWD=Your Y Combinator Password
    SEARCH_URL="https://www.workatastartup.com/companies?..."
    APPLIED="Comma-separated list of companies you've already applied to"
    RESUME_PATH="Path to your resume PDF"
@@ -88,16 +85,13 @@ This project automates the process of applying to jobs on [WorkAtAStartup](https
 
 ## Environment Variables
 
-- `YCUSER`: Your WorkAtAStartup account's username or email address.
-- `YCPSWD`: Your WorkAtAStartup account's password.
-  - You can also use your Hacker News credentials to login.
 - `RESUME_PATH`: The absolute path to a PDF of your resume.
 - `SEARCH_URL` [optional]: The URL of a WorkAtAStartup search page.
   - Opening up [the default search page](https://www.workatastartup.com/companies) and modifying the search criteria will modify the URL parameters. Copying and pasting the new URL into this environment variable will restrict the search to jobs that match these criteria.
 - `APPLIED` [optional]: A comma-separated list of companies you've already applied to.
   - Each item should include both the company's name and batch indicator. (e.g., "Airbnb (W09)" instead of "Airbnb")
 
-⚠️ These credentials can be used to access your WorkAtAStartup account as well as view and modify account data. Practice extreme caution when using this tool.
+⚠️ Note: Login credentials (`YCUSER` and `YCPSWD`) are no longer required as the login process is now manual.
 
 ## Dependencies
 
@@ -108,7 +102,3 @@ This project automates the process of applying to jobs on [WorkAtAStartup](https
 ## License
 
 This project is licensed under the MIT License. See the [LICENSE](LICENSE.txt) file for details.
-
-## Disclaimer
-
-This tool requires access to sensitive account information. Certain practices may reduce the risk of leaking this data to unauthorized parties, but nothing will completely eliminate all risk. Use this software at your own risk.
