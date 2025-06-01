@@ -1,4 +1,3 @@
-// PageHandler.ts
 import puppeteer, { Browser, Page } from 'puppeteer';
 import logger from '../logger.js';
 import { withTimeout } from '../utils.js';
@@ -7,8 +6,11 @@ export class PageHandler {
 	private browser: Browser | null = null;
 	private browserLoading: Promise<boolean> | null = null;
 	public pages: Page[] = [];
+	private headless: boolean;
 
-	constructor(browser?: Browser) {
+	constructor(headless: boolean = true, browser?: Browser) {
+		this.headless = headless;
+
 		if (browser) {
 			this.browser = browser;
 			this.browserLoading = Promise.resolve(true);
@@ -17,10 +19,14 @@ export class PageHandler {
 		}
 	}
 
-	private async init() {
-		this.browser = await puppeteer.launch({ headless: true });
-
-		return true;
+	private async init(): Promise<boolean> {
+		try {
+			this.browser = await puppeteer.launch({ headless: this.headless });
+			return true;
+		} catch (error) {
+			logger.log('error', `⚠️ Failed to initialize browser: ${error}`);
+			return false;
+		}
 	}
 
 	public async openUrl(url: string): Promise<boolean> {
@@ -68,5 +74,11 @@ export class PageHandler {
 		if (this.browser) await this.browser.close();
 		this.pages = [];
 		this.browser = null;
+	}
+
+	public async relaunchBrowser(headless: boolean): Promise<void> {
+		await this.closeBrowser();
+		this.headless = headless;
+		this.browserLoading = this.init();
 	}
 }

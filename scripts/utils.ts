@@ -48,29 +48,6 @@ export async function consolePrompt(prompt: string): Promise<string> {
 }
 
 /**
- * Loads the environment variable of the login credentials
- * 
- * @returns An array with username and password. If either credential is not found, null is returned.
- */
-export function loadLogin(): string[] | null {
-	const userName = process.env.YCUSER;
-
-	if (!userName) {
-		logger.log('warn', '❌ No username (YCUSER) found in environment variables.');
-		return null;
-	}
-
-	const password = process.env.YCPSWD;
-
-	if (!password) {
-		logger.log('warn', '❌ No password (YCPSWD) found in environment variables.');
-		return null;
-	}
-
-	return [userName, password];
-}
-
-/**
  * Loads the environment variable of companies already applied to
  * 
  * @returns A Record with company names as keys and Company objects as values.
@@ -100,10 +77,16 @@ export function loadApplied(): Record<string, Company> {
  * @returns A promise that rejects if the timeout is exceeded.
  */
 export async function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
+	let timeout: NodeJS.Timeout;
+
+	const timeoutPromise = new Promise<T>((_, reject) => {
+		timeout = setTimeout(() => {
+			reject(new Error(`Operation timed out after ${ms} ms`));
+		}, ms);
+	});
+
 	return Promise.race([
-		promise,
-		new Promise<T>((_, reject) =>
-			setTimeout(() => reject(new Error(`Operation timed out after ${ms} ms`)), ms)
-		),
+		promise.finally(() => clearTimeout(timeout)),
+		timeoutPromise,
 	]);
 }

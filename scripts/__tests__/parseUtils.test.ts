@@ -1,7 +1,5 @@
 import puppeteer, { Browser, Page } from 'puppeteer';
 import {
-	findInputById,
-	findDivBtnByClass,
 	getAllJobLinks,
 	findDivByIdPrefix,
 	findBtnByTxt,
@@ -20,34 +18,6 @@ describe('parseUtils', () => {
 
 	afterAll(async () => {
 		await browser.close();
-	});
-
-	describe('findInputById', () => {
-		it('should find an input element by its ID', async () => {
-			await page.setContent('<input id="test-input" />');
-			const input = await findInputById(page, 'test-input');
-			expect(input).not.toBeNull();
-		});
-
-		it('should return null if the input element is not found', async () => {
-			await page.setContent('<div></div>');
-			const input = await findInputById(page, 'non-existent-id');
-			expect(input).toBeNull();
-		});
-	});
-
-	describe('findDivBtnByClass', () => {
-		it('should find a button within a div with the specified class', async () => {
-			await page.setContent('<div class="test-class"><button>Click me</button></div>');
-			const button = await findDivBtnByClass(page, 'test-class');
-			expect(button).not.toBeNull();
-		});
-
-		it('should return null if the div or button is not found', async () => {
-			await page.setContent('<div></div>');
-			const button = await findDivBtnByClass(page, 'non-existent-class');
-			expect(button).toBeNull();
-		});
 	});
 
 	describe('getAllJobLinks', () => {
