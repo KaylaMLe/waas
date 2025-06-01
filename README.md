@@ -45,20 +45,44 @@ This project automates the process of applying to jobs on [WorkAtAStartup](https
 
 ## Usage
 
-1. Start the script:
+1. **Start the script**:
    ```bash
    npm start
    ```
 
-2. The script will:
-   - Log into your Y Combinator account.
-   - Scrape job listings from the search page.
-   - Check if you've already applied to a company.
-   - Use OpenAI to generate an application message.
-   - Prompt you to approve or modify the message.
-   - Submit the application.
+2. **Log in manually**:
+   - A non-headless browser will open the Y Combinator login page.
+   - Log in through the browser.
+   - Return to the console and press Enter when prompted.
 
-3. After the script completes, it will log the list of companies you applied to.
+3. **Search for jobs**:
+   - The script navigates to the job search page.
+   - If `SEARCH_URL` is not defined in your `.env`, you'll be asked whether to continue with the default URL.
+
+4. **Scrape and filter job listings**:
+   - The script collects job links from the page.
+   - Each job is examined to check:
+     - If the job description is long enough
+     - If you’ve already applied (via UI or the `APPLIED` environment variable)
+
+5. **Review jobs and generate applications**:
+   - For each valid, unvisited job:
+     - The script uses OpenAI to generate a message.
+     - You’ll be shown the message and asked:
+       ```
+       Do you want to send this message to [CompanyName]?
+       Type "Y" to approve or "N" to enter a different message:
+       ```
+     - If you select "N", you can type a custom message to send.
+
+6. **Submit the application**:
+   - The message is typed into the application form.
+   - The script attempts to click "Send" and confirms submission via the UI.
+   - The job is marked as applied.
+
+7. **Completion**:
+   - After all jobs are processed, a summary of applied companies is printed to the console.
+   - The browser is automatically closed.
 
 ## File Structure
 
