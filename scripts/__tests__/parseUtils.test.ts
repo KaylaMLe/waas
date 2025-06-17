@@ -1,34 +1,48 @@
 import puppeteer, { Browser, Page } from 'puppeteer';
+import { PageHandler } from '../classes/PageHandler';
 import {
-	getAllJobLinks,
+	getJobLinks,
 	findDivByIdPrefix,
 	findBtnByTxt,
 } from '../parseUtils';
 
 jest.setTimeout(10000); // Increase timeout for Puppeteer operations
 
+jest.mock('../utils', () => ({
+	...jest.requireActual('../utils'),
+	consolePrompt: jest.fn().mockResolvedValue(''), // skip actual prompt
+	waitTime: jest.fn(), // avoid slowing tests
+}));
+
 describe('parseUtils', () => {
 	let browser: Browser;
 	let page: Page;
+	let pageHandler: PageHandler;
 
 	beforeAll(async () => {
 		browser = await puppeteer.launch({ headless: true });
 		page = await browser.newPage();
+		pageHandler = new PageHandler(true, browser); // Initialize PageHandler with the browser instance
 	});
 
 	afterAll(async () => {
 		await browser.close();
 	});
 
-	describe('getAllJobLinks', () => {
+	describe('getJobLinks', () => {
 		it('should return all job links on the page', async () => {
+			// Mock opening a URL in PageHandler
+			jest.spyOn(pageHandler, 'openUrl').mockResolvedValue(true);
+			jest.spyOn(pageHandler, 'getMostRecentPage').mockReturnValue(page);
+
 			await page.setContent(`
         <div class="job-name">
           <a href="https://www.workatastartup.com/jobs/1">Job 1</a>
           <a href="https://www.workatastartup.com/jobs/2">Job 2</a>
         </div>
       `);
-			const links = await getAllJobLinks(page);
+
+			const links = await getJobLinks(pageHandler);
 			expect(links).toEqual([
 				'https://www.workatastartup.com/jobs/1',
 				'https://www.workatastartup.com/jobs/2',
@@ -36,8 +50,12 @@ describe('parseUtils', () => {
 		});
 
 		it('should return an empty array if no job links are found', async () => {
+			// Mock opening a URL in PageHandler
+			jest.spyOn(pageHandler, 'openUrl').mockResolvedValue(true);
+			jest.spyOn(pageHandler, 'getMostRecentPage').mockReturnValue(page);
+
 			await page.setContent('<div></div>');
-			const links = await getAllJobLinks(page);
+			const links = await getJobLinks(pageHandler);
 			expect(links).toEqual([]);
 		});
 	});

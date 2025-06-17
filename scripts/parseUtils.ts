@@ -1,23 +1,44 @@
 import { ElementHandle, Page } from 'puppeteer';
 
 import logger from './logger.js';
+import { consolePrompt, waitTime } from './utils.js';
+import { PageHandler } from './classes/PageHandler.js';
 
 /**
- * Parses the page for all anchor tags with hrefs starting with "https://www.workatastartup.com/jobs/"
+ * Retrieves all job links from the page by parsing anchor tags with hrefs starting with a specific URL pattern.
  * 
- * @param page - The Puppeteer page object to search within.
- * @returns A promise that resolves to an array of job links.
+ * @param pageHandler - An instance of PageHandler to manage Puppeteer pages.
+ * @returns A promise that resolves to an array of job link URLs.
  */
-export async function getAllJobLinks(page: Page): Promise<string[]> {
-	const jobLinks = await page.evaluate(() => {
+export async function getJobLinks(pageHandler: PageHandler): Promise<string[]> {
+	if (!process.env.SEARCH_URL) {
+		logger.log('warn', '❌ No SEARCH_URL found in environment variables.');
+		await consolePrompt('🔵 Press CTRL + C to quit or any key to use the default search URL.');
+	}
+
+	const searchUrl = process.env.SEARCH_URL || 'https://www.workatastartup.com/companies';
+	const searchPageOpened = await pageHandler.openUrl(searchUrl);
+
+	if (!searchPageOpened) {
+		return [];
+	}
+
+	await waitTime();
+	const jobLinks = await pageHandler.getMostRecentPage().evaluate(() => {
 		const jobDivs = Array.from(document.querySelectorAll('div.job-name'));
 		const anchors = jobDivs.flatMap(div =>
 			Array.from(div.querySelectorAll('a[href^="https://www.workatastartup.com/jobs/"]'))
 		);
 		return anchors.map(anchor => anchor.getAttribute('href'));
-	});
+	}) as string[];
 
-	return jobLinks as string[];
+	if (jobLinks.length > 0) {
+		logger.log('info', `✅ Found ${jobLinks.length} job links.\n`);
+	} else {
+		logger.log('error', '⚠️ No job links found.');
+	}
+
+	return jobLinks;
 }
 
 /**
