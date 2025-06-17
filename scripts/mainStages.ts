@@ -8,8 +8,7 @@ import { PageHandler } from './classes/PageHandler.js';
  * @returns A promise that resolves to true if the login was successful, false otherwise.
  */
 export async function loggingIn(pageHandler: PageHandler): Promise<boolean> {
-	logger.log('debug', '🔵 Launching browser in non-headless mode for login...');
-	await pageHandler.relaunchBrowser(false); // Relaunch browser in non-headless mode
+	logger.log('debug', '🔵 Opening login page...');
 
 	const loginUrl = 'https://account.ycombinator.com/?continue=https%3A%2F%2Fwww.workatastartup.com%2F';
 	const pageOpened = await pageHandler.openUrl(loginUrl);
@@ -33,6 +32,6 @@ export async function loggingIn(pageHandler: PageHandler): Promise<boolean> {
 	}
 
 	logger.log('info', '✅ Login successful.');
-	await pageHandler.relaunchBrowser(true); // Relaunch browser in headless mode for subsequent operations
+	pageHandler.closeMostRecentPage();
 	return true;
 }

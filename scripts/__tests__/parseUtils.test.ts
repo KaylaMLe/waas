@@ -22,7 +22,7 @@ describe('parseUtils', () => {
 	beforeAll(async () => {
 		browser = await puppeteer.launch({ headless: true });
 		page = await browser.newPage();
-		pageHandler = new PageHandler(true, browser); // Initialize PageHandler with the browser instance
+		pageHandler = new PageHandler(browser); // Initialize PageHandler with the browser instance
 	});
 
 	afterAll(async () => {

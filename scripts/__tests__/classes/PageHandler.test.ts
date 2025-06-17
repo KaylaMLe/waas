@@ -34,7 +34,7 @@ describe('PageHandler', () => {
 		} as unknown as jest.Mocked<Browser>;
 
 		(puppeteer.launch as jest.Mock).mockResolvedValue(mockBrowser);
-		pageHandler = new PageHandler(true, mockBrowser);
+		pageHandler = new PageHandler(mockBrowser);
 	});
 
 	afterEach(async () => {
@@ -47,7 +47,7 @@ describe('PageHandler', () => {
 
 	test('should initialize with an existing browser instance', async () => {
 		const customBrowser = mockBrowser;
-		const handler = new PageHandler(true, customBrowser);
+		const handler = new PageHandler(customBrowser);
 
 		await handler['browserLoading'];
 		expect(handler['browser']).toBe(customBrowser);
@@ -68,13 +68,6 @@ describe('PageHandler', () => {
 
 		expect(result).toBe(false);
 		expect(logger.log).toHaveBeenCalledWith('error', '⚠️ Failed to create a new page:', expect.any(Error));
-	});
-
-	test('should relaunch the browser with a new headless mode', async () => {
-		await pageHandler.relaunchBrowser(false);
-
-		expect(mockBrowser.close).toHaveBeenCalled();
-		expect(puppeteer.launch).toHaveBeenCalledWith({ headless: false });
 	});
 
 	test('should return false if browser fails to load', async () => {
