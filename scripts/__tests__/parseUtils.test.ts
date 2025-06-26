@@ -61,9 +61,17 @@ describe('parseUtils', () => {
 			jest.spyOn(pageHandler, 'openUrl').mockResolvedValue(true);
 			jest.spyOn(pageHandler, 'getMostRecentPage').mockReturnValue(page);
 
+			// Mock waitForFunction to simulate scroll height increasing
+			page.waitForFunction = jest.fn().mockResolvedValue(true);
+
 			const evaluateMock = jest.spyOn(page, 'evaluate');
 			evaluateMock
-				.mockImplementationOnce(async () => undefined) // scroll
+				.mockImplementationOnce(async () => true) // loading indicator present (first iteration)
+				.mockImplementationOnce(async () => 1000) // scroll height before (first iteration)
+				.mockImplementationOnce(async () => undefined) // scroll to loading indicator (first iteration)
+				.mockImplementationOnce(async () => true) // loading indicator present (second iteration)
+				.mockImplementationOnce(async () => 1500) // scroll height before (second iteration)
+				.mockImplementationOnce(async () => undefined) // scroll to loading indicator (second iteration)
 				.mockImplementationOnce(async () => [
 					'https://www.workatastartup.com/jobs/1',
 					'https://www.workatastartup.com/jobs/2',
@@ -74,10 +82,17 @@ describe('parseUtils', () => {
 				'https://www.workatastartup.com/jobs/1',
 				'https://www.workatastartup.com/jobs/2',
 			]);
-			expect(evaluateMock).toHaveBeenCalledTimes(2);
-			// First call is scroll, second is extraction
-			const scrollCall = evaluateMock.mock.calls[0][0].toString();
-			expect(scrollCall).toMatch(/scrollBy|setInterval|scrollHeight/);
+			expect(evaluateMock).toHaveBeenCalledTimes(7); // 6 scroll-related + 1 extraction
+
+			// Check that scroll calls contain the loading indicator logic
+			const scrollCall1 = evaluateMock.mock.calls[2][0].toString(); // First scroll call
+			const scrollCall2 = evaluateMock.mock.calls[5][0].toString(); // Second scroll call
+			expect(scrollCall1).toMatch(
+				/querySelector|getBoundingClientRect|scrollBy/
+			);
+			expect(scrollCall2).toMatch(
+				/querySelector|getBoundingClientRect|scrollBy/
+			);
 		});
 	});
 
