@@ -5,15 +5,14 @@ import { withTimeout } from '../utils.js';
 export class PageHandler {
 	private browser: Browser | null = null;
 	private browserLoading: Promise<boolean> | null = null;
+	private headless: boolean = false;
 	public pages: Page[] = [];
-	private headless: boolean;
 
-	constructor(headless: boolean = true, browser?: Browser) {
-		this.headless = headless;
-
+	constructor(browser?: Browser) {
 		if (browser) {
 			this.browser = browser;
 			this.browserLoading = Promise.resolve(true);
+			this.headless = true;// run tests in headless mode
 		} else {
 			this.browserLoading = this.init();
 		}
@@ -74,11 +73,5 @@ export class PageHandler {
 		if (this.browser) await this.browser.close();
 		this.pages = [];
 		this.browser = null;
-	}
-
-	public async relaunchBrowser(headless: boolean): Promise<void> {
-		await this.closeBrowser();
-		this.headless = headless;
-		this.browserLoading = this.init();
 	}
 }

@@ -1,83 +1,19 @@
 import { ElementHandle, TimeoutError } from 'puppeteer';
 
 import { checkAppMethod, compareJobs, writeAppMsg } from './scripts/aiUtils.js';
+import logger from './scripts/logger.js';
+import { loggingIn } from './scripts/mainStages.js';
+import { findBtnByTxt, findDivByIdPrefix, getJobLinks } from './scripts/parseUtils.js';
+import { consolePrompt, loadApplied, waitTime } from './scripts/utils.js';
 import Company from './scripts/classes/Company.js';
 import Job from './scripts/classes/Job.js';
-import logger from './scripts/logger.js';
 import { PageHandler } from './scripts/classes/PageHandler.js';
-import { findBtnByTxt, findDivByIdPrefix, getAllJobLinks } from './scripts/parseUtils.js';
-import { consolePrompt, loadApplied, waitTime } from './scripts/utils.js';
 
 const pageHandler = new PageHandler();
 
-/**
- * Opens the WorkAtAStartup login page and waits for the user to complete the login.
- * 
- * @returns A promise that resolves to true if the login was successful, false otherwise.
- */
-async function loggingIn(): Promise<boolean> {
-	logger.log('debug', '🔵 Launching browser in non-headless mode for login...');
-	await pageHandler.relaunchBrowser(false); // Relaunch browser in non-headless mode
-
-	const loginUrl = 'https://account.ycombinator.com/?continue=https%3A%2F%2Fwww.workatastartup.com%2F';
-	const pageOpened = await pageHandler.openUrl(loginUrl);
-
-	if (!pageOpened) {
-		logger.log('error', '⚠️ Login page not opened.');
-		return false;
-	}
-
-	logger.log('info', '🔵 Please log in using the opened browser window. Return to this console once you have completed the login.');
-	await consolePrompt('Press Enter to continue...');
-
-	// Check if the user is logged in
-	const loggedIn = await pageHandler.getMostRecentPage().evaluate(() =>
-		document.body.innerText.includes('My profile')
-	);
-
-	if (!loggedIn) {
-		logger.log('error', '⚠️ Login unsuccessful.');
-		return false;
-	}
-
-	logger.log('info', '✅ Login successful.');
-	await pageHandler.relaunchBrowser(true); // Relaunch browser in headless mode for subsequent operations
-	return true;
-}
-
-/**
- * Gathers jobs from the search page
- * 
- * @returns an array of links to each job listing
- */
-async function getJobLinks(): Promise<string[]> {
-	if (!process.env.SEARCH_URL) {
-		logger.log('warn', '❌ No SEARCH_URL found in environment variables.');
-		await consolePrompt('🔵 Press CTRL + C to quit or any key to use the default search URL.');
-	}
-
-	const searchUrl = process.env.SEARCH_URL || 'https://www.workatastartup.com/companies';
-	const searchPageOpened = await pageHandler.openUrl(searchUrl);
-
-	if (!searchPageOpened) {
-		return [];
-	}
-
-	await waitTime();
-	const jobLinks = await getAllJobLinks(pageHandler.getMostRecentPage());
-
-	if (jobLinks.length > 0) {
-		logger.log('info', `✅ Found ${jobLinks.length} job links.\n`);
-	} else {
-		logger.log('error', '⚠️ No job links found.');
-	}
-
-	return jobLinks;
-}
-
 async function main(): Promise<void> {
 	logger.log('info', '🔵 Logging in...');
-	const loggedIn = await loggingIn();
+	const loggedIn = await loggingIn(pageHandler);
 
 	if (loggedIn) {
 		logger.log('info', '✅ Logged in');
@@ -88,7 +24,7 @@ async function main(): Promise<void> {
 
 	await waitTime();
 	logger.log('info', '🔵 Starting search for roles...');
-	const jobLinks = await getJobLinks();
+	const jobLinks = await getJobLinks(pageHandler);
 
 	if (jobLinks.length <= 0) {
 		return;
