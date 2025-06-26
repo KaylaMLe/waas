@@ -29,8 +29,15 @@ export async function getJobLinks(pageHandler: PageHandler): Promise<string[]> {
 	await waitTime();
 
 	const page = pageHandler.getMostRecentPage();
-	const scrollCount = parseInt(process.env.SCROLL_COUNT || '0', 10);
-	logger.log('debug', `🔵 Scrolling ${scrollCount} times.`);
+	const scrollCountStr = process.env.SCROLL_COUNT || '0';
+	const scrollCount =
+		scrollCountStr === 'inf' ? Infinity : parseInt(scrollCountStr, 10);
+	logger.log(
+		'debug',
+		`🔵 Scrolling ${
+			scrollCount === Infinity ? 'infinitely' : scrollCount
+		} times.`
+	);
 
 	const scrollAndWaitForLoading = async (page: Page, maxScrolls: number) => {
 		let scrollsCompleted = 0;

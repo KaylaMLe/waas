@@ -94,6 +94,47 @@ describe('parseUtils', () => {
 				/querySelector|getBoundingClientRect|scrollBy/
 			);
 		});
+
+		it('should scroll infinitely until no more results when SCROLL_COUNT is "inf"', async () => {
+			process.env.SCROLL_COUNT = 'inf'; // Test infinite scrolling
+
+			jest.spyOn(pageHandler, 'openUrl').mockResolvedValue(true);
+			jest.spyOn(pageHandler, 'getMostRecentPage').mockReturnValue(page);
+
+			// Mock waitForFunction to always resolve (scroll height always increases when loading indicator is present)
+			page.waitForFunction = jest.fn().mockResolvedValue(true);
+
+			const evaluateMock = jest.spyOn(page, 'evaluate');
+			evaluateMock
+				.mockImplementationOnce(async () => true) // loading indicator present (first iteration)
+				.mockImplementationOnce(async () => 1000) // scroll height before (first iteration)
+				.mockImplementationOnce(async () => undefined) // scroll to loading indicator (first iteration)
+				.mockImplementationOnce(async () => true) // loading indicator present (second iteration)
+				.mockImplementationOnce(async () => 1500) // scroll height before (second iteration)
+				.mockImplementationOnce(async () => undefined) // scroll to loading indicator (second iteration)
+				.mockImplementationOnce(async () => false) // loading indicator no longer present (third iteration - should break)
+				.mockImplementationOnce(async () => [
+					'https://www.workatastartup.com/jobs/1',
+					'https://www.workatastartup.com/jobs/2',
+				]); // extract job links
+
+			const links = await getJobLinks(pageHandler);
+			expect(links).toEqual([
+				'https://www.workatastartup.com/jobs/1',
+				'https://www.workatastartup.com/jobs/2',
+			]);
+
+			// Verify that evaluate was called at least once for loading indicator check
+			expect(evaluateMock).toHaveBeenCalled();
+
+			// Verify that the function eventually called the job links extraction
+			const jobLinksCall = evaluateMock.mock.calls.find(
+				(call) =>
+					call[0].toString().includes('querySelectorAll') &&
+					call[0].toString().includes('job-name')
+			);
+			expect(jobLinksCall).toBeDefined();
+		});
 	});
 
 	describe('findDivByIdPrefix', () => {
