@@ -58,6 +58,37 @@ describe('parseUtils', () => {
 			const links = await getJobLinks(pageHandler);
 			expect(links).toEqual([]);
 		});
+
+		it('should scroll to the bottom before extracting job links', async () => {
+			jest.spyOn(pageHandler, 'openUrl').mockResolvedValue(true);
+			jest.spyOn(pageHandler, 'getMostRecentPage').mockReturnValue(page);
+
+			const evaluateMock = jest.spyOn(page, 'evaluate');
+
+			// Simulate scroll and then extraction
+			evaluateMock
+				.mockImplementationOnce(async (fn) => {
+					// This is the scroll-to-bottom function
+					return undefined;
+				})
+				.mockImplementationOnce(async (fn) => {
+					// This is the job link extraction function
+					return [
+						'https://www.workatastartup.com/jobs/1',
+						'https://www.workatastartup.com/jobs/2',
+					];
+				});
+
+			const links = await getJobLinks(pageHandler);
+			expect(links).toEqual([
+				'https://www.workatastartup.com/jobs/1',
+				'https://www.workatastartup.com/jobs/2',
+			]);
+			expect(evaluateMock).toHaveBeenCalledTimes(2);
+			// First call is scroll, second is extraction
+			const scrollCall = evaluateMock.mock.calls[0][0].toString();
+			expect(scrollCall).toMatch(/scrollBy|setInterval|scrollHeight/);
+		});
 	});
 
 	describe('findDivByIdPrefix', () => {

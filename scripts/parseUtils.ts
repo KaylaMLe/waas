@@ -24,7 +24,28 @@ export async function getJobLinks(pageHandler: PageHandler): Promise<string[]> {
 	}
 
 	await waitTime();
-	const jobLinks = await pageHandler.getMostRecentPage().evaluate(() => {
+
+	// Scroll to the bottom of the page to load all job listings
+	const page = pageHandler.getMostRecentPage();
+	await page.evaluate(async () => {
+		await new Promise<void>((resolve) => {
+			let totalHeight = 0;
+			const distance = 500;
+			const timer = setInterval(() => {
+				const scrollHeight = document.body.scrollHeight;
+				window.scrollBy(0, distance);
+				totalHeight += distance;
+				if (totalHeight >= scrollHeight) {
+					clearInterval(timer);
+					resolve();
+				}
+			}, 200);
+		});
+	});
+	// Optionally wait a bit for dynamic content to load
+	await new Promise(r => setTimeout(r, 1000));
+
+	const jobLinks = await page.evaluate(() => {
 		const jobDivs = Array.from(document.querySelectorAll('div.job-name'));
 		const anchors = jobDivs.flatMap(div =>
 			Array.from(div.querySelectorAll('a[href^="https://www.workatastartup.com/jobs/"]'))
