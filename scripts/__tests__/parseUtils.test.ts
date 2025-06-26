@@ -1,10 +1,6 @@
 import puppeteer, { Browser, Page } from 'puppeteer';
 import { PageHandler } from '../classes/PageHandler';
-import {
-	getJobLinks,
-	findDivByIdPrefix,
-	findBtnByTxt,
-} from '../parseUtils';
+import { getJobLinks, findDivByIdPrefix, findBtnByTxt } from '../parseUtils';
 
 jest.setTimeout(10000); // Increase timeout for Puppeteer operations
 
@@ -60,24 +56,18 @@ describe('parseUtils', () => {
 		});
 
 		it('should scroll to the bottom before extracting job links', async () => {
+			process.env.SCROLL_COUNT = '2'; // Ensure scrolling is triggered
+
 			jest.spyOn(pageHandler, 'openUrl').mockResolvedValue(true);
 			jest.spyOn(pageHandler, 'getMostRecentPage').mockReturnValue(page);
 
 			const evaluateMock = jest.spyOn(page, 'evaluate');
-
-			// Simulate scroll and then extraction
 			evaluateMock
-				.mockImplementationOnce(async (fn) => {
-					// This is the scroll-to-bottom function
-					return undefined;
-				})
-				.mockImplementationOnce(async (fn) => {
-					// This is the job link extraction function
-					return [
-						'https://www.workatastartup.com/jobs/1',
-						'https://www.workatastartup.com/jobs/2',
-					];
-				});
+				.mockImplementationOnce(async () => undefined) // scroll
+				.mockImplementationOnce(async () => [
+					'https://www.workatastartup.com/jobs/1',
+					'https://www.workatastartup.com/jobs/2',
+				]); // extract job links
 
 			const links = await getJobLinks(pageHandler);
 			expect(links).toEqual([
