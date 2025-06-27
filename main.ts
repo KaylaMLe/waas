@@ -1,5 +1,3 @@
-import { ElementHandle, TimeoutError } from 'puppeteer';
-
 import { checkAppMethod, compareJobs } from './scripts/aiUtils.js';
 import logger from './scripts/logger.js';
 import {
