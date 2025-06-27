@@ -49,7 +49,11 @@ describe('mainStages', () => {
 		jest.clearAllMocks();
 
 		mockPageHandler = new PageHandler();
-		mockJob = new Job('https://test-job.com', 'Test job description');
+		mockJob = new Job(
+			'Software Engineer at TestCompany',
+			'https://test-job.com',
+			'Test job description'
+		);
 		mockPage = {
 			waitForSelector: jest.fn(),
 			$: jest.fn(),
@@ -183,6 +187,60 @@ describe('mainStages', () => {
 				mockJob
 			);
 
+			expect(result).toBe(false);
+		});
+	});
+
+	describe('loggingIn', () => {
+		let mockPageHandler: any;
+
+		beforeEach(() => {
+			jest.clearAllMocks();
+			mockPageHandler = {
+				openUrl: jest.fn(),
+				getMostRecentPage: jest.fn(),
+				closeMostRecentPage: jest.fn(),
+			};
+		});
+
+		it('should return true on successful login', async () => {
+			mockPageHandler.openUrl.mockResolvedValueOnce(true);
+			const evaluateMock = jest
+				.fn<() => Promise<boolean>>()
+				.mockResolvedValueOnce(true);
+			mockPageHandler.getMostRecentPage.mockReturnValue({
+				evaluate: evaluateMock,
+			});
+			(utils.consolePrompt as any).mockResolvedValue(undefined);
+
+			const { loggingIn } = await import('../mainStages');
+			const result = await loggingIn(mockPageHandler);
+
+			expect(result).toBe(true);
+			expect(mockPageHandler.openUrl).toHaveBeenCalled();
+			expect(evaluateMock).toHaveBeenCalled();
+			expect(mockPageHandler.closeMostRecentPage).toHaveBeenCalled();
+		});
+
+		it('should return false if login page fails to open', async () => {
+			mockPageHandler.openUrl.mockResolvedValueOnce(false);
+			const { loggingIn } = await import('../mainStages');
+			const result = await loggingIn(mockPageHandler);
+			expect(result).toBe(false);
+		});
+
+		it('should return false if login unsuccessful', async () => {
+			mockPageHandler.openUrl.mockResolvedValueOnce(true);
+			const evaluateMock = jest
+				.fn<() => Promise<boolean>>()
+				.mockResolvedValueOnce(false);
+			mockPageHandler.getMostRecentPage.mockReturnValue({
+				evaluate: evaluateMock,
+			});
+			(utils.consolePrompt as any).mockResolvedValue(undefined);
+
+			const { loggingIn } = await import('../mainStages');
+			const result = await loggingIn(mockPageHandler);
 			expect(result).toBe(false);
 		});
 	});

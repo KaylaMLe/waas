@@ -1,5 +1,3 @@
-import { ElementHandle, TimeoutError } from 'puppeteer';
-
 import { checkAppMethod, compareJobs } from './scripts/aiUtils.js';
 import logger from './scripts/logger.js';
 import {
@@ -100,7 +98,7 @@ async function main(): Promise<void> {
 			if (hasApplied) {
 				logger.log('info', '❌ Already applied to this job.');
 			} else {
-				companyRecords[companyName].jobs.push(new Job(link, jobText));
+				companyRecords[companyName].jobs.push(new Job(position, link, jobText));
 				logger.log('info', '✅ Job added to company record.');
 			}
 		}
@@ -111,6 +109,7 @@ async function main(): Promise<void> {
 	}
 
 	const appliedCompanies = [];
+	const jobsWithOtherAppMethods: Job[] = [];
 
 	for (const companyName in companyRecords) {
 		if (companyRecords[companyName].applied) {
@@ -132,11 +131,15 @@ async function main(): Promise<void> {
 					'⚠️ An error occurred while comparing jobs. Skipping this company.'
 				);
 			} else {
-				logger.log('info', `🟩 Best job for ${companyName}: ${bestJob.link}`);
+				logger.log('info', `🟩 ${bestJob.position}: ${bestJob.link}`);
 				const appMethod = await checkAppMethod(bestJob.desc);
+				bestJob.appMethod = appMethod;
 
 				if (!appMethod) {
-					logger.log('error', '⚠️ Skipping this job.');
+					logger.log(
+						'error',
+						'⚠️ Application method not parsed.Skipping this job.'
+					);
 				} else if (appMethod === 'none') {
 					const applicationSuccessful =
 						await handleMessageApprovalAndApplication(
@@ -148,11 +151,25 @@ async function main(): Promise<void> {
 					if (applicationSuccessful) {
 						appliedCompanies.push(companyName);
 					}
+				} else {
+					// Store jobs with application methods other than "none" for later logging
+					jobsWithOtherAppMethods.push(bestJob);
 				}
 			}
 
 			console.log();
 		}
+	}
+
+	// Log all jobs with application methods other than "none"
+	if (jobsWithOtherAppMethods.length > 0) {
+		logger.log('info', '📋 Jobs requiring different application methods:');
+
+		for (const job of jobsWithOtherAppMethods) {
+			logger.log('info', `\t${job.position}: ${job.appMethod}\n\t${job.link}`);
+		}
+
+		console.log();
 	}
 
 	// after all the jobs have been applied to, log the new list of applied companies to the console
