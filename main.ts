@@ -109,6 +109,7 @@ async function main(): Promise<void> {
 	}
 
 	const appliedCompanies = [];
+	const jobsWithOtherAppMethods: Job[] = [];
 
 	for (const companyName in companyRecords) {
 		if (companyRecords[companyName].applied) {
@@ -132,9 +133,13 @@ async function main(): Promise<void> {
 			} else {
 				logger.log('info', `🟩 ${bestJob.position}: ${bestJob.link}`);
 				const appMethod = await checkAppMethod(bestJob.desc);
+				bestJob.appMethod = appMethod;
 
 				if (!appMethod) {
-					logger.log('error', '⚠️ Skipping this job.');
+					logger.log(
+						'error',
+						'⚠️ Application method not parsed.Skipping this job.'
+					);
 				} else if (appMethod === 'none') {
 					const applicationSuccessful =
 						await handleMessageApprovalAndApplication(
@@ -146,11 +151,25 @@ async function main(): Promise<void> {
 					if (applicationSuccessful) {
 						appliedCompanies.push(companyName);
 					}
+				} else {
+					// Store jobs with application methods other than "none" for later logging
+					jobsWithOtherAppMethods.push(bestJob);
 				}
 			}
 
 			console.log();
 		}
+	}
+
+	// Log all jobs with application methods other than "none"
+	if (jobsWithOtherAppMethods.length > 0) {
+		logger.log('info', '📋 Jobs requiring different application methods:');
+
+		for (const job of jobsWithOtherAppMethods) {
+			logger.log('info', `\t${job.position}: ${job.appMethod}\n\t${job.link}`);
+		}
+
+		console.log();
 	}
 
 	// after all the jobs have been applied to, log the new list of applied companies to the console
