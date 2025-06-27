@@ -24,7 +24,7 @@ describe('aiUtils.ts', () => {
 
 	beforeEach(() => {
 		jest.clearAllMocks();
-		mockCreate = (openai.chat.completions.create as jest.Mock);
+		mockCreate = openai.chat.completions.create as jest.Mock;
 	});
 
 	describe('getResponse', () => {
@@ -63,7 +63,9 @@ describe('aiUtils.ts', () => {
 		it('should return the response content from OpenAI with a file', async () => {
 			// Mock file system behavior
 			(fs.existsSync as jest.Mock).mockReturnValue(true);
-			(fs.readFileSync as jest.Mock).mockReturnValue(Buffer.from('PDF content'));
+			(fs.readFileSync as jest.Mock).mockReturnValue(
+				Buffer.from('PDF content')
+			);
 
 			// Mock OpenAI response
 			mockCreate.mockResolvedValueOnce({
@@ -76,7 +78,10 @@ describe('aiUtils.ts', () => {
 				],
 			});
 
-			const result = await aiUtils.getResponseWithFile('Test prompt', 'resume.pdf');
+			const result = await aiUtils.getResponseWithFile(
+				'Test prompt',
+				'resume.pdf'
+			);
 
 			// Assertions
 			expect(result).toBe('Mocked response content');
@@ -91,7 +96,9 @@ describe('aiUtils.ts', () => {
 								type: 'file',
 								file: {
 									filename: 'resume.pdf',
-									file_data: expect.stringContaining('data:application/pdf;base64,'),
+									file_data: expect.stringContaining(
+										'data:application/pdf;base64,'
+									),
 								},
 							},
 							{
@@ -107,10 +114,16 @@ describe('aiUtils.ts', () => {
 		it('should return null if the file does not exist', async () => {
 			(fs.existsSync as jest.Mock).mockReturnValue(false);
 
-			const result = await aiUtils.getResponseWithFile('Test prompt', 'nonexistent.pdf');
+			const result = await aiUtils.getResponseWithFile(
+				'Test prompt',
+				'nonexistent.pdf'
+			);
 
 			expect(result).toBeNull();
-			expect(logger.log).toHaveBeenCalledWith('warn', '❌ File not found: nonexistent.pdf');
+			expect(logger.log).toHaveBeenCalledWith(
+				'warn',
+				'❌ File not found: nonexistent.pdf'
+			);
 		});
 	});
 
@@ -129,7 +142,10 @@ describe('aiUtils.ts', () => {
 			const result = await aiUtils.checkAppMethod('Job description text');
 
 			expect(result).toBe('Apply online');
-			expect(logger.log).toHaveBeenCalledWith('info', '🟪 Application method: Apply online');
+			expect(logger.log).toHaveBeenCalledWith(
+				'info',
+				'🟪 Application method: Apply online'
+			);
 		});
 	});
 
@@ -137,11 +153,21 @@ describe('aiUtils.ts', () => {
 		it('should return the best job if found', async () => {
 			// Mock file system behavior
 			(fs.existsSync as jest.Mock).mockReturnValue(true);
-			(fs.readFileSync as jest.Mock).mockReturnValue(Buffer.from('PDF content'));
+			(fs.readFileSync as jest.Mock).mockReturnValue(
+				Buffer.from('PDF content')
+			);
 
 			const jobs = [
-				new Job('https://job1.com', 'Description 1'),
-				new Job('https://job2.com', 'Description 2'),
+				new Job(
+					'Software Engineer at Company1',
+					'https://job1.com',
+					'Description 1'
+				),
+				new Job(
+					'Software Engineer at Company2',
+					'https://job2.com',
+					'Description 2'
+				),
 			];
 
 			mockCreate.mockResolvedValueOnce({
@@ -162,11 +188,21 @@ describe('aiUtils.ts', () => {
 		it('should log a warning and return null if no matching job is found', async () => {
 			// Mock file system behavior
 			(fs.existsSync as jest.Mock).mockReturnValue(true);
-			(fs.readFileSync as jest.Mock).mockReturnValue(Buffer.from('PDF content'));
+			(fs.readFileSync as jest.Mock).mockReturnValue(
+				Buffer.from('PDF content')
+			);
 
 			const jobs = [
-				new Job('https://job1.com', 'Description 1'),
-				new Job('https://job2.com', 'Description 2'),
+				new Job(
+					'Software Engineer at Company1',
+					'https://job1.com',
+					'Description 1'
+				),
+				new Job(
+					'Software Engineer at Company2',
+					'https://job2.com',
+					'Description 2'
+				),
 			];
 
 			mockCreate.mockResolvedValueOnce({
@@ -204,7 +240,10 @@ describe('aiUtils.ts', () => {
 			const result = await aiUtils.writeAppMsg('Job description text');
 
 			expect(result).toBe('Application message');
-			expect(logger.log).toHaveBeenCalledWith('info', '🟩 Application message: Application message');
+			expect(logger.log).toHaveBeenCalledWith(
+				'info',
+				'🟩 Application message: Application message'
+			);
 		});
 	});
 });

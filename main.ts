@@ -100,7 +100,7 @@ async function main(): Promise<void> {
 			if (hasApplied) {
 				logger.log('info', '❌ Already applied to this job.');
 			} else {
-				companyRecords[companyName].jobs.push(new Job(link, jobText));
+				companyRecords[companyName].jobs.push(new Job(position, link, jobText));
 				logger.log('info', '✅ Job added to company record.');
 			}
 		}
@@ -132,7 +132,7 @@ async function main(): Promise<void> {
 					'⚠️ An error occurred while comparing jobs. Skipping this company.'
 				);
 			} else {
-				logger.log('info', `🟩 Best job for ${companyName}: ${bestJob.link}`);
+				logger.log('info', `🟩 ${bestJob.position}: ${bestJob.link}`);
 				const appMethod = await checkAppMethod(bestJob.desc);
 
 				if (!appMethod) {
