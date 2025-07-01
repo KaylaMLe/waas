@@ -1,10 +1,7 @@
 import { checkAppMethod, compareJobs } from './scripts/aiUtils.js';
 import logger from './scripts/logger.js';
-import {
-	loggingIn,
-	handleMessageApprovalAndApplication,
-} from './scripts/mainStages.js';
-import { getJobLinks, findDivByIdPrefix } from './scripts/parseUtils.js';
+import { loggingIn, searchForJobs, handleMessageApprovalAndApplication } from './scripts/mainStages.js';
+import { findDivByIdPrefix } from './scripts/parseUtils.js';
 import { loadApplied, waitTime } from './scripts/utils.js';
 import Company from './scripts/classes/Company.js';
 import Job from './scripts/classes/Job.js';
@@ -25,9 +22,10 @@ async function main(): Promise<void> {
 
 	await waitTime();
 	logger.log('info', '🔵 Starting search for roles...');
-	const jobLinks = await getJobLinks(pageHandler);
+	const jobLinks = await searchForJobs(pageHandler);
 
 	if (jobLinks.length <= 0) {
+		logger.log('info', '❌ No new jobs found');
 		return;
 	}
 
@@ -43,18 +41,13 @@ async function main(): Promise<void> {
 			continue;
 		}
 
-		const jobText = await pageHandler
-			.getMostRecentPage()
-			.evaluate(() => document.body.innerText);
+		const jobText = await pageHandler.getMostRecentPage().evaluate(() => document.body.innerText);
 		logger.log('dump', jobText);
 		const jobLines = jobText.split('\n');
 
 		// if the job description is too short, it won't have the expected info in the expected places
 		if (jobLines.length < 11) {
-			logger.log(
-				'error',
-				'⚠️ This job description is too short! Is it a valid job description?'
-			);
+			logger.log('error', '⚠️ This job description is too short! Is it a valid job description?');
 			continue;
 		}
 
@@ -67,25 +60,17 @@ async function main(): Promise<void> {
 		// if the company name couldn't be parsed or if the company has already been applied to, skip this job
 		if (!companyName) {
 			logger.log('warn', '❌ Company name not found');
-		} else if (
-			companyName in companyRecords &&
-			companyRecords[companyName].applied
-		) {
+		} else if (companyName in companyRecords && companyRecords[companyName].applied) {
 			logger.log('info', `❌ Already applied to ${companyName}`);
 		} else {
-			const applyBtn = await findDivByIdPrefix(
-				pageHandler.getMostRecentPage(),
-				'ApplyButton'
-			);
+			const applyBtn = await findDivByIdPrefix(pageHandler.getMostRecentPage(), 'ApplyButton');
 
 			if (!applyBtn) {
 				logger.log('error', '⚠️ Skipping this job page.');
 				continue;
 			}
 
-			const applyBtnTxt = await pageHandler
-				.getMostRecentPage()
-				.evaluate((btn) => btn.innerText, applyBtn);
+			const applyBtnTxt = await pageHandler.getMostRecentPage().evaluate((btn) => btn.innerText, applyBtn);
 			// if the apply button says 'Applied' and not 'Apply', it means I've already applied to this job
 			const hasApplied = applyBtnTxt === 'Applied';
 
@@ -126,27 +111,16 @@ async function main(): Promise<void> {
 			}
 
 			if (!bestJob) {
-				logger.log(
-					'error',
-					'⚠️ An error occurred while comparing jobs. Skipping this company.'
-				);
+				logger.log('error', '⚠️ An error occurred while comparing jobs. Skipping this company.');
 			} else {
 				logger.log('info', `🟩 ${bestJob.position}: ${bestJob.link}`);
 				const appMethod = await checkAppMethod(bestJob.desc);
 				bestJob.appMethod = appMethod;
 
 				if (!appMethod) {
-					logger.log(
-						'error',
-						'⚠️ Application method not parsed.Skipping this job.'
-					);
+					logger.log('error', '⚠️ Application method not parsed.Skipping this job.');
 				} else if (appMethod === 'none') {
-					const applicationSuccessful =
-						await handleMessageApprovalAndApplication(
-							pageHandler,
-							companyName,
-							bestJob
-						);
+					const applicationSuccessful = await handleMessageApprovalAndApplication(pageHandler, companyName, bestJob);
 
 					if (applicationSuccessful) {
 						appliedCompanies.push(companyName);
@@ -174,10 +148,7 @@ async function main(): Promise<void> {
 
 	// after all the jobs have been applied to, log the new list of applied companies to the console
 	const appliedCompaniesStr = appliedCompanies.join(',');
-	logger.log(
-		'info',
-		`✅ You have applied to the following companies:\n${appliedCompaniesStr}`
-	);
+	logger.log('info', `✅ You have applied to the following companies:\n${appliedCompaniesStr}`);
 }
 
 try {
