@@ -157,6 +157,6 @@ try {
 	logger.log('error', '⚠️ Unexpected error:', error);
 } finally {
 	// close the browser and all pages
-	logger.log('debug', '🔵 Closing the browser...');
+	logger.log('info', '🔵 Closing the browser...');
 	await pageHandler.closeBrowser();
 }

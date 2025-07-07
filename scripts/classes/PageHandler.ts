@@ -12,7 +12,7 @@ export class PageHandler {
 		if (browser) {
 			this.browser = browser;
 			this.browserLoading = Promise.resolve(true);
-			this.headless = true;// run tests in headless mode
+			this.headless = true; // run tests in headless mode
 		} else {
 			this.browserLoading = this.init();
 		}
@@ -43,10 +43,10 @@ export class PageHandler {
 		if (!page) return false;
 
 		try {
-			logger.log('debug', `🔵 Opening ${url}...`);
+			logger.log('info', `🔵 Opening ${url}...`);
 			await page.goto(url, { waitUntil: 'domcontentloaded' });
 			this.pages.push(page);
-			logger.log('debug', '✅ Page opened successfully.');
+			logger.log('info', '✅ Page opened successfully.');
 			return true;
 		} catch (error) {
 			logger.log('error', '❌ Failed to open URL:', error);
@@ -65,10 +65,14 @@ export class PageHandler {
 
 	public async closeMostRecentPage(): Promise<void> {
 		const page = this.pages.pop();
-		if (page) await page.close();
+		if (page) {
+			logger.log('info', '🔵 Closing most recent page...');
+			await page.close();
+		}
 	}
 
 	public async closeBrowser(): Promise<void> {
+		logger.log('info', '🔵 Closing all pages and browser...');
 		for (const page of this.pages) await page.close();
 		if (this.browser) await this.browser.close();
 		this.pages = [];

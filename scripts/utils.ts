@@ -5,7 +5,7 @@ import logger from './logger.js';
 
 /**
  * Waits for a random amount of time between rangeMin and rangeMax seconds.
- * 
+ *
  * @param rangeMin - The minimum number of seconds to wait (default 20)
  * @param rangeMax - The maximum number of seconds to wait (default 30)
  * @returns A promise that resolves after the wait time has passed.
@@ -19,13 +19,13 @@ export async function waitTime(rangeMin: number = 20, rangeMax: number = 30): Pr
 	}
 
 	const seconds = Math.floor(Math.random() * (rangeDiff + 1)) + rangeMin;
-	logger.log('debug', `⏳ Waiting for ${seconds} seconds...\n`);
-	await new Promise(resolve => setTimeout(resolve, seconds * 1000));
+	logger.log('info', `⏳ Waiting for ${seconds} seconds...\n`);
+	await new Promise((resolve) => setTimeout(resolve, seconds * 1000));
 }
 
 /**
  * Prompts the user for input in the console and returns the trimmed response.
- * 
+ *
  * @param prompt - The prompt to display to the user.
  * @returns A promise that resolves to the user's input, trimmed of whitespace.
  */
@@ -36,12 +36,10 @@ export async function consolePrompt(prompt: string): Promise<string> {
 			output: process.stdout,
 		});
 
-		rl.question(prompt,
-			(answer: string) => {
-				rl.close();
-				resolve(answer.trim());
-			}
-		);
+		rl.question(prompt, (answer: string) => {
+			rl.close();
+			resolve(answer.trim());
+		});
 	});
 
 	return answer;
@@ -49,7 +47,7 @@ export async function consolePrompt(prompt: string): Promise<string> {
 
 /**
  * Loads the environment variable of companies already applied to
- * 
+ *
  * @returns A Record with company names as keys and Company objects as values.
  *          If no companies are found, an empty object is returned.
  */
@@ -63,7 +61,7 @@ export function loadApplied(): Record<string, Company> {
 
 	const companyRecords: Record<string, Company> = {};
 
-	applied.split(',').forEach(company => {
+	applied.split(',').forEach((company) => {
 		companyRecords[company] = new Company(true);
 	});
 
@@ -85,8 +83,5 @@ export async function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T
 		}, ms);
 	});
 
-	return Promise.race([
-		promise.finally(() => clearTimeout(timeout)),
-		timeoutPromise,
-	]);
+	return Promise.race([promise.finally(() => clearTimeout(timeout)), timeoutPromise]);
 }

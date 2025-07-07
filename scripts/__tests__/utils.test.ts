@@ -22,7 +22,7 @@ describe('utils.ts', () => {
 			jest.runAllTimers();
 			await waitPromise;
 
-			expect(logSpy).toHaveBeenCalledWith('debug', expect.stringMatching(/⏳ Waiting for \d+ seconds/));
+			expect(logSpy).toHaveBeenCalledWith('info', expect.stringMatching(/⏳ Waiting for \d+ seconds/));
 		});
 
 		it('should log an error if rangeMin is greater than rangeMax', async () => {

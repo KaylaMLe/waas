@@ -26,10 +26,7 @@ export async function getResponse(prompt: string): Promise<string | null> {
  * @param filePath - the path to the file to be sent to the model
  * @returns a promise that resolves to the model's response as a string, or null if an error occurs
  */
-export async function getResponseWithFile(
-	prompt: string,
-	filePath: string
-): Promise<string | null> {
+export async function getResponseWithFile(prompt: string, filePath: string): Promise<string | null> {
 	if (!fs.existsSync(filePath)) {
 		logger.log('warn', `❌ File not found: ${filePath}`);
 		return null;
@@ -73,11 +70,6 @@ export async function getResponseWithFile(
  */
 export async function checkAppMethod(jobText: string): Promise<string | null> {
 	const methodResponse = await getResponse(appMethodPrompt + jobText);
-
-	if (methodResponse) {
-		logger.log('info', `🟪 Application method: ${methodResponse}`);
-	}
-
 	return methodResponse;
 }
 
@@ -88,15 +80,10 @@ export async function checkAppMethod(jobText: string): Promise<string | null> {
  * @returns a promise that resolves to the best job if one is found, or null if no suitable job is found
  */
 export async function compareJobs(jobs: Job[]): Promise<Job | null> {
-	const formattedJobs = jobs
-		.map((job) => `\`\`\`${job.link}\n-----\n${job.desc}\`\`\``)
-		.join('\n\n');
+	const formattedJobs = jobs.map((job) => `\`\`\`${job.link}\n-----\n${job.desc}\`\`\``).join('\n\n');
 	const comparePrompt = jobComparePrompt + '\n\n\n' + formattedJobs;
 
-	const linkResponse = await getResponseWithFile(
-		comparePrompt,
-		process.env.RESUME_PATH || 'resume.pdf'
-	);
+	const linkResponse = await getResponseWithFile(comparePrompt, process.env.RESUME_PATH || 'resume.pdf');
 
 	if (!linkResponse) {
 		logger.log('warn', '❌ Failed to retrieve job comparison.');
@@ -107,10 +94,7 @@ export async function compareJobs(jobs: Job[]): Promise<Job | null> {
 		if (bestJob) {
 			return bestJob;
 		} else {
-			logger.log(
-				'warn',
-				`❌ No job matching the given link was found. Was the AI response valid?\n\n${linkResponse}`
-			);
+			logger.log('warn', `❌ No job matching the given link was found. Was the AI response valid?\n\n${linkResponse}`);
 			return null;
 		}
 	}
@@ -124,10 +108,7 @@ export async function compareJobs(jobs: Job[]): Promise<Job | null> {
  */
 export async function writeAppMsg(jobDesc: string): Promise<string | null> {
 	const prompt = appMsgPrompt + '\n\n\n' + jobDesc;
-	const msgResponse = await getResponseWithFile(
-		prompt,
-		process.env.RESUME_PATH || 'resume.pdf'
-	);
+	const msgResponse = await getResponseWithFile(prompt, process.env.RESUME_PATH || 'resume.pdf');
 
 	if (msgResponse) {
 		logger.log('info', `🟩 Application message: ${msgResponse}`);

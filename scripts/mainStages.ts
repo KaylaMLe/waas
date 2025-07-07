@@ -36,7 +36,6 @@ export async function loggingIn(pageHandler: PageHandler): Promise<boolean> {
 		return false;
 	}
 
-	logger.log('info', '✅ Login successful.');
 	pageHandler.closeMostRecentPage();
 	return true;
 }
