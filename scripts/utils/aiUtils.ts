@@ -1,6 +1,6 @@
 import fs from 'fs';
-import openai from './openAiClient.js'; // Import the singleton instance
-import Job from './classes/Job.js';
+import openai from '../openAiClient.js'; // Import the singleton instance
+import Job from '../classes/Job.js';
 import { appMethodPrompt, appMsgPrompt, jobComparePrompt } from './prompts.js';
 import logger from './logger.js';
 

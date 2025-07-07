@@ -1,24 +1,24 @@
 import { jest } from '@jest/globals';
-import { searchForJobs } from '../core/jobSearch';
-import { PageHandler } from '../classes/PageHandler';
-import * as utils from '../utils/utils';
-import * as parseUtils from '../utils/parseUtils';
+import { searchForJobs } from '../../core/jobSearch';
+import { PageHandler } from '../../classes/PageHandler';
+import * as utils from '../../utils/utils';
+import * as parseUtils from '../../utils/parseUtils';
 
 // Mock dependencies
-jest.mock('../logger', () => ({
+jest.mock('../../utils/logger', () => ({
 	log: jest.fn(),
 }));
 
-jest.mock('../utils', () => ({
+jest.mock('../../utils/utils', () => ({
 	consolePrompt: jest.fn(),
 	waitTime: jest.fn(),
 }));
 
-jest.mock('../parseUtils', () => ({
+jest.mock('../../utils/parseUtils', () => ({
 	filterJobLinks: jest.fn(),
 }));
 
-jest.mock('../classes/PageHandler', () => {
+jest.mock('../../classes/PageHandler', () => {
 	return {
 		PageHandler: jest.fn().mockImplementation(() => ({
 			openUrl: jest.fn(),

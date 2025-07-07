@@ -1,17 +1,17 @@
 import fs from 'fs';
-import logger from '../utils/logger';
-import * as aiUtils from '../utils/aiUtils';
-import openai from '../openAiClient'; // Import the OpenAI client to mock
-import Job from '../classes/Job';
+import logger from '../../utils/logger';
+import * as aiUtils from '../../utils/aiUtils';
+import openai from '../../openAiClient'; // Import the OpenAI client to mock
+import Job from '../../classes/Job';
 
 jest.mock('fs');
-jest.mock('../logger', () => ({
+jest.mock('../../utils/logger', () => ({
 	log: jest.fn((level, message) => {
 		// Redirect logs to the console
 		console.log(`[${level.toUpperCase()}] ${message}`);
 	}),
 }));
-jest.mock('../openaiClient', () => ({
+jest.mock('../../openaiClient', () => ({
 	chat: {
 		completions: {
 			create: jest.fn(),

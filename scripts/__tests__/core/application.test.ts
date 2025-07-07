@@ -1,32 +1,32 @@
 import { jest } from '@jest/globals';
-import { handleMessageApprovalAndApplication } from '../core/application';
-import { PageHandler } from '../classes/PageHandler';
-import Job from '../classes/Job';
-import * as utils from '../utils/utils';
-import * as parseUtils from '../utils/parseUtils';
-import * as aiUtils from '../utils/aiUtils';
+import { handleMessageApprovalAndApplication } from '../../core/application';
+import { PageHandler } from '../../classes/PageHandler';
+import Job from '../../classes/Job';
+import * as utils from '../../utils/utils';
+import * as parseUtils from '../../utils/parseUtils';
+import * as aiUtils from '../../utils/aiUtils';
 import { TimeoutError } from 'puppeteer';
 
 // Mock dependencies
-jest.mock('../logger', () => ({
+jest.mock('../../utils/logger', () => ({
 	log: jest.fn(),
 }));
 
-jest.mock('../utils', () => ({
+jest.mock('../../utils/utils', () => ({
 	consolePrompt: jest.fn(),
 	waitTime: jest.fn(),
 }));
 
-jest.mock('../parseUtils', () => ({
+jest.mock('../../utils/parseUtils', () => ({
 	findBtnByTxt: jest.fn(),
 	findDivByIdPrefix: jest.fn(),
 }));
 
-jest.mock('../aiUtils', () => ({
+jest.mock('../../utils/aiUtils', () => ({
 	writeAppMsg: jest.fn(),
 }));
 
-jest.mock('../classes/PageHandler', () => {
+jest.mock('../../classes/PageHandler', () => {
 	return {
 		PageHandler: jest.fn().mockImplementation(() => ({
 			openUrl: jest.fn(),
@@ -40,7 +40,7 @@ jest.mock('../classes/PageHandler', () => {
 	};
 });
 
-jest.mock('../classes/Job', () => {
+jest.mock('../../classes/Job', () => {
 	return jest.fn().mockImplementation(() => ({
 		link: 'https://example.com/job',
 		desc: 'Job description',

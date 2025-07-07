@@ -1,6 +1,6 @@
-import logger from './logger.js';
-import { consolePrompt } from './utils.js';
-import { PageHandler } from './classes/PageHandler.js';
+import logger from '../utils/logger.js';
+import { consolePrompt } from '../utils/utils.js';
+import { PageHandler } from '../classes/PageHandler.js';
 
 /**
  * Opens the WorkAtAStartup login page and waits for the user to complete the login.

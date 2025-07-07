@@ -1,9 +1,9 @@
-import { waitTime, consolePrompt, loadApplied } from '../utils/utils';
-import Company from '../classes/Company';
-import logger from '../utils/logger';
+import { waitTime, consolePrompt, loadApplied } from '../../utils/utils';
+import Company from '../../classes/Company';
+import logger from '../../utils/logger';
 
 jest.mock('readline');
-jest.mock('../utils/logger');
+jest.mock('../../utils/logger');
 
 describe('utils.ts', () => {
 	beforeEach(() => {

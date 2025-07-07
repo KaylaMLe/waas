@@ -1,7 +1,7 @@
-import logger from './logger.js';
-import { consolePrompt, waitTime } from './utils.js';
-import { PageHandler } from './classes/PageHandler.js';
-import { filterJobLinks } from './parseUtils.js';
+import logger from '../utils/logger.js';
+import { consolePrompt, waitTime } from '../utils/utils.js';
+import { PageHandler } from '../classes/PageHandler.js';
+import { filterJobLinks } from '../utils/parseUtils.js';
 import { Page } from 'puppeteer';
 
 /**

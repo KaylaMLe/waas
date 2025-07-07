@@ -1,10 +1,10 @@
-import logger from './logger.js';
-import { consolePrompt, waitTime } from './utils.js';
-import { PageHandler } from './classes/PageHandler.js';
-import { findBtnByTxt, findDivByIdPrefix } from './parseUtils.js';
-import { writeAppMsg } from './aiUtils.js';
+import logger from '../utils/logger.js';
+import { consolePrompt, waitTime } from '../utils/utils.js';
+import { PageHandler } from '../classes/PageHandler.js';
+import { findBtnByTxt, findDivByIdPrefix } from '../utils/parseUtils.js';
+import { writeAppMsg } from '../utils/aiUtils.js';
 import { TimeoutError } from 'puppeteer';
-import Job from './classes/Job.js';
+import Job from '../classes/Job.js';
 
 /**
  * Handles message approval and application submission for a job.

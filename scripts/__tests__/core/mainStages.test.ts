@@ -1,16 +1,16 @@
 import { jest } from '@jest/globals';
-import { loggingIn, searchForJobs, handleMessageApprovalAndApplication } from '../core/mainStages';
+import { loggingIn, searchForJobs, handleMessageApprovalAndApplication } from '../../core/mainStages';
 
 // Mock the split modules
-jest.mock('../login', () => ({
+jest.mock('../../core/login', () => ({
 	loggingIn: jest.fn(),
 }));
 
-jest.mock('../jobSearch', () => ({
+jest.mock('../../core/jobSearch', () => ({
 	searchForJobs: jest.fn(),
 }));
 
-jest.mock('../application', () => ({
+jest.mock('../../core/application', () => ({
 	handleMessageApprovalAndApplication: jest.fn(),
 }));
 

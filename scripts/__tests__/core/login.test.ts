@@ -1,18 +1,18 @@
 import { jest } from '@jest/globals';
-import { loggingIn } from '../core/login';
-import { PageHandler } from '../classes/PageHandler';
-import * as utils from '../utils/utils';
+import { loggingIn } from '../../core/login';
+import { PageHandler } from '../../classes/PageHandler';
+import * as utils from '../../utils/utils';
 
 // Mock dependencies
-jest.mock('../logger', () => ({
+jest.mock('../../utils/logger', () => ({
 	log: jest.fn(),
 }));
 
-jest.mock('../utils', () => ({
+jest.mock('../../utils/utils', () => ({
 	consolePrompt: jest.fn(),
 }));
 
-jest.mock('../classes/PageHandler', () => {
+jest.mock('../../classes/PageHandler', () => {
 	return {
 		PageHandler: jest.fn().mockImplementation(() => ({
 			openUrl: jest.fn(),
