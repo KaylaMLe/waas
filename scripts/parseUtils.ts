@@ -45,7 +45,7 @@ export async function findBtnByTxt(page: Page, innerText: string): Promise<Eleme
 	}
 }
 
-export async function filterJobLinks(page: Page): Promise<string[]> {
+export async function filterJobLinks(page: Page): Promise<Record<string, string[]>> {
 	logger.log('debug', '🔵 Filtering job links...');
 
 	try {
@@ -56,9 +56,9 @@ export async function filterJobLinks(page: Page): Promise<string[]> {
 			.map((s) => s.trim())
 			.filter(Boolean);
 
-		// Evaluate in the page context to extract job links, checking APPLIED status first
-		const filteredLinks = await page.evaluate((appliedCompanies) => {
-			const links: string[] = [];
+		// Evaluate in the page context to extract job links grouped by company, checking APPLIED status first
+		const companyJobs = await page.evaluate((appliedCompanies) => {
+			const jobsByCompany: Record<string, string[]> = {};
 			const companyBlocks = Array.from(document.querySelectorAll('div.directory-list > div:not(.loading)'));
 			console.log(`🔵 Found ${companyBlocks.length} company blocks`);
 
@@ -106,21 +106,61 @@ export async function filterJobLinks(page: Page): Promise<string[]> {
 
 				// Only scrape job links for companies that haven't been applied to
 				const jobAnchors = Array.from(block.querySelectorAll('a[href^="https://www.workatastartup.com/jobs/"]'));
+				const jobLinks: string[] = [];
 
 				for (const a of jobAnchors) {
 					const link = a.getAttribute('href') as string; // the previous querySelector ensures this is never empty or undefined
-					links.push(link);
+					jobLinks.push(link);
+				}
+
+				if (jobLinks.length > 0) {
+					jobsByCompany[companyBatch] = jobLinks;
 				}
 			}
 
-			return links;
+			return jobsByCompany;
 		}, appliedCompanies);
 
-		logger.log('debug', `🔵 Found ${filteredLinks.length} jobs after filtering`);
+		const totalJobs = Object.values(companyJobs).reduce((sum, links) => sum + links.length, 0);
+		logger.log(
+			'debug',
+			`🔵 Found ${Object.keys(companyJobs).length} companies with ${totalJobs} total jobs after filtering`
+		);
 
-		return filteredLinks;
+		return companyJobs;
 	} catch (error) {
 		logger.log('error', `⚠️ Error in filterJobLinks: ${error}`);
-		return [];
+		return {};
+	}
+}
+
+/**
+ * Checks if a job has been applied to by examining the apply button text
+ *
+ * @param page - The Puppeteer page object containing the job
+ * @returns A promise that resolves to true if the job has been applied to, false otherwise
+ */
+export async function checkJobApplicationStatus(page: Page): Promise<boolean> {
+	try {
+		const applyBtn = await findDivByIdPrefix(page, 'ApplyButton');
+
+		if (!applyBtn) {
+			logger.log('warn', '❌ Apply button not found');
+			return false;
+		}
+
+		const applyBtnTxt = await page.evaluate((btn) => btn.innerText, applyBtn);
+		const hasApplied = applyBtnTxt === 'Applied';
+
+		if (hasApplied) {
+			logger.log('debug', '❌ Job has already been applied to');
+		} else {
+			logger.log('debug', '✅ Job has not been applied to yet');
+		}
+
+		return hasApplied;
+	} catch (error) {
+		logger.log('error', `⚠️ Error checking job application status: ${error}`);
+		return false;
 	}
 }

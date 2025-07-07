@@ -47,7 +47,7 @@ export async function loggingIn(pageHandler: PageHandler): Promise<boolean> {
  * @param pageHandler - An instance of PageHandler to manage Puppeteer pages.
  * @returns A promise that resolves to an array of job link URLs.
  */
-export async function searchForJobs(pageHandler: PageHandler): Promise<string[]> {
+export async function searchForJobs(pageHandler: PageHandler): Promise<Record<string, string[]>> {
 	if (!process.env.SEARCH_URL) {
 		logger.log('warn', '❌ No SEARCH_URL found in environment variables.');
 		await consolePrompt('🔵 Press CTRL + C to quit or any key to use the default search URL.');
@@ -57,7 +57,7 @@ export async function searchForJobs(pageHandler: PageHandler): Promise<string[]>
 	const searchPageOpened = await pageHandler.openUrl(searchUrl);
 
 	if (!searchPageOpened) {
-		return [];
+		return {};
 	}
 
 	await waitTime();

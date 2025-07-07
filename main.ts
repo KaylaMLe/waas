@@ -1,7 +1,7 @@
 import { checkAppMethod, compareJobs } from './scripts/aiUtils.js';
 import logger from './scripts/logger.js';
 import { loggingIn, searchForJobs, handleMessageApprovalAndApplication } from './scripts/mainStages.js';
-import { findDivByIdPrefix } from './scripts/parseUtils.js';
+import { checkJobApplicationStatus } from './scripts/parseUtils.js';
 import { waitTime } from './scripts/utils.js';
 import Company from './scripts/classes/Company.js';
 import Job from './scripts/classes/Job.js';
@@ -22,9 +22,9 @@ async function main(): Promise<void> {
 
 	await waitTime();
 	logger.log('info', '🔵 Starting search for roles...');
-	const jobLinks = await searchForJobs(pageHandler);
+	const companyJobs = await searchForJobs(pageHandler);
 
-	if (jobLinks.length <= 0) {
+	if (Object.keys(companyJobs).length === 0) {
 		logger.log('info', '❌ No new jobs found');
 		return;
 	}
@@ -32,63 +32,59 @@ async function main(): Promise<void> {
 	// scrape job descriptions and check for individual job application status
 	const companyRecords: Record<string, Company> = {};
 
-	for (const link of jobLinks) {
-		logger.log('info', `${link}`);
-		const jobPageOpened = await pageHandler.openUrl(link);
+	// Process each company's jobs
+	for (const [companyName, jobLinks] of Object.entries(companyJobs)) {
+		logger.log('info', `🔵 Processing company: ${companyName}`);
 
-		if (!jobPageOpened) {
-			logger.log('error', '⚠️ Skipping this job page.');
-			continue;
-		}
-
-		const jobText = await pageHandler.getMostRecentPage().evaluate(() => document.body.innerText);
-		logger.log('dump', jobText);
-		const jobLines = jobText.split('\n');
-
-		// if the job description is too short, it won't have the expected info in the expected places
-		if (jobLines.length < 11) {
-			logger.log('error', '⚠️ This job description is too short! Is it a valid job description?');
-			continue;
-		}
-
-		const hasUnreadMessages = /^\d+$/.test(jobLines[3]); // the unread msg count is the 4th line if there are any
-		const position = hasUnreadMessages ? jobLines[11] : jobLines[10]; // the eleventh line is expected to be the job title and company's name
-		logger.log('info', `🟪 ${position}`);
-		const companyName = position.split(' at ')[1];
-
-		// if the company name couldn't be parsed, skip this job
-		if (!companyName) {
-			logger.log('warn', '❌ Company name not found');
-			continue;
-		}
-
-		const applyBtn = await findDivByIdPrefix(pageHandler.getMostRecentPage(), 'ApplyButton');
-
-		if (!applyBtn) {
-			logger.log('error', '⚠️ Skipping this job page.');
-			continue;
-		}
-
-		const applyBtnTxt = await pageHandler.getMostRecentPage().evaluate((btn) => btn.innerText, applyBtn);
-		// if the apply button says 'Applied' and not 'Apply', it means I've already applied to this job
-		const hasApplied = applyBtnTxt === 'Applied';
-
+		// Initialize company record
 		if (!(companyName in companyRecords)) {
-			companyRecords[companyName] = new Company(hasApplied);
-		} else {
-			companyRecords[companyName].applied = companyRecords[companyName].applied || hasApplied;
+			companyRecords[companyName] = new Company(false);
 		}
 
-		if (hasApplied) {
-			logger.log('info', '❌ Already applied to this job.');
-		} else {
-			companyRecords[companyName].jobs.push(new Job(position, link, jobText));
-			logger.log('info', '✅ Job added to company record.');
-		}
+		// Process each job for this company
+		for (const link of jobLinks) {
+			logger.log('info', `${link}`);
+			const jobPageOpened = await pageHandler.openUrl(link);
 
-		console.log();
-		await waitTime(5, 10);
-		await pageHandler.closeMostRecentPage();
+			if (!jobPageOpened) {
+				logger.log('error', '⚠️ Skipping this job page.');
+				continue;
+			}
+
+			const jobText = await pageHandler.getMostRecentPage().evaluate(() => document.body.innerText);
+			logger.log('dump', jobText);
+			const jobLines = jobText.split('\n');
+
+			// if the job description is too short, it won't have the expected info in the expected places
+			if (jobLines.length < 11) {
+				logger.log('error', '⚠️ This job description is too short! Is it a valid job description?');
+				continue;
+			}
+
+			const hasUnreadMessages = /^\d+$/.test(jobLines[3]); // the unread msg count is the 4th line if there are any
+			const position = hasUnreadMessages ? jobLines[11] : jobLines[10]; // the eleventh line is expected to be the job title and company's name
+			logger.log('info', `🟪 ${position}`);
+
+			// Check if this job has been applied to
+			const hasApplied = await checkJobApplicationStatus(pageHandler.getMostRecentPage());
+
+			if (hasApplied) {
+				logger.log('info', '❌ Already applied to this job.');
+				// If any job at this company has been applied to, mark the company as applied
+				companyRecords[companyName].applied = true;
+			} else {
+				companyRecords[companyName].jobs.push(new Job(position, link, jobText));
+				logger.log('info', '✅ Job added to company record.');
+			}
+
+			console.log();
+			await waitTime(5, 10);
+			await pageHandler.closeMostRecentPage();
+
+			if (companyRecords[companyName].applied) {
+				break;
+			}
+		}
 	}
 
 	const appliedCompanies = [];
@@ -99,13 +95,19 @@ async function main(): Promise<void> {
 			appliedCompanies.push(companyName);
 		} else {
 			// compare all jobs at this company and find the one that best fits my qualifications before applying
-			// the only companies with zero jobs are the companies included in the APPLIED environment variable
+			// companies with zero jobs either had all jobs already applied to or encountered errors
 			let bestJob: Job | null = null;
 
 			if (companyRecords[companyName].jobs.length > 1) {
 				bestJob = await compareJobs(companyRecords[companyName].jobs);
-			} else {
+			} else if (companyRecords[companyName].jobs.length === 1) {
 				bestJob = companyRecords[companyName].jobs[0];
+			} else {
+				logger.log(
+					'debug',
+					`❌ No available jobs for ${companyName} (all jobs were already applied to or failed to load)`
+				);
+				continue;
 			}
 
 			if (!bestJob) {
