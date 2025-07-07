@@ -2,7 +2,7 @@ import { checkAppMethod, compareJobs } from './scripts/aiUtils.js';
 import logger from './scripts/logger.js';
 import { loggingIn, searchForJobs, handleMessageApprovalAndApplication } from './scripts/mainStages.js';
 import { findDivByIdPrefix } from './scripts/parseUtils.js';
-import { loadApplied, waitTime } from './scripts/utils.js';
+import { waitTime } from './scripts/utils.js';
 import Company from './scripts/classes/Company.js';
 import Job from './scripts/classes/Job.js';
 import { PageHandler } from './scripts/classes/PageHandler.js';
@@ -29,8 +29,8 @@ async function main(): Promise<void> {
 		return;
 	}
 
-	// scrape job descriptions and check for companies already applied to
-	const companyRecords = loadApplied();
+	// scrape job descriptions and check for individual job application status
+	const companyRecords: Record<string, Company> = {};
 
 	for (const link of jobLinks) {
 		logger.log('info', `${link}`);
@@ -51,41 +51,39 @@ async function main(): Promise<void> {
 			continue;
 		}
 
-		// check if I've already applied to a job at this company
 		const hasUnreadMessages = /^\d+$/.test(jobLines[3]); // the unread msg count is the 4th line if there are any
 		const position = hasUnreadMessages ? jobLines[11] : jobLines[10]; // the eleventh line is expected to be the job title and company's name
 		logger.log('info', `🟪 ${position}`);
 		const companyName = position.split(' at ')[1];
 
-		// if the company name couldn't be parsed or if the company has already been applied to, skip this job
+		// if the company name couldn't be parsed, skip this job
 		if (!companyName) {
 			logger.log('warn', '❌ Company name not found');
-		} else if (companyName in companyRecords && companyRecords[companyName].applied) {
-			logger.log('info', `❌ Already applied to ${companyName}`);
+			continue;
+		}
+
+		const applyBtn = await findDivByIdPrefix(pageHandler.getMostRecentPage(), 'ApplyButton');
+
+		if (!applyBtn) {
+			logger.log('error', '⚠️ Skipping this job page.');
+			continue;
+		}
+
+		const applyBtnTxt = await pageHandler.getMostRecentPage().evaluate((btn) => btn.innerText, applyBtn);
+		// if the apply button says 'Applied' and not 'Apply', it means I've already applied to this job
+		const hasApplied = applyBtnTxt === 'Applied';
+
+		if (!(companyName in companyRecords)) {
+			companyRecords[companyName] = new Company(hasApplied);
 		} else {
-			const applyBtn = await findDivByIdPrefix(pageHandler.getMostRecentPage(), 'ApplyButton');
+			companyRecords[companyName].applied = companyRecords[companyName].applied || hasApplied;
+		}
 
-			if (!applyBtn) {
-				logger.log('error', '⚠️ Skipping this job page.');
-				continue;
-			}
-
-			const applyBtnTxt = await pageHandler.getMostRecentPage().evaluate((btn) => btn.innerText, applyBtn);
-			// if the apply button says 'Applied' and not 'Apply', it means I've already applied to this job
-			const hasApplied = applyBtnTxt === 'Applied';
-
-			if (!(companyName in companyRecords)) {
-				companyRecords[companyName] = new Company(hasApplied);
-			} else {
-				companyRecords[companyName].applied = hasApplied;
-			}
-
-			if (hasApplied) {
-				logger.log('info', '❌ Already applied to this job.');
-			} else {
-				companyRecords[companyName].jobs.push(new Job(position, link, jobText));
-				logger.log('info', '✅ Job added to company record.');
-			}
+		if (hasApplied) {
+			logger.log('info', '❌ Already applied to this job.');
+		} else {
+			companyRecords[companyName].jobs.push(new Job(position, link, jobText));
+			logger.log('info', '✅ Job added to company record.');
 		}
 
 		console.log();

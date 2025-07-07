@@ -49,32 +49,31 @@ export async function filterJobLinks(page: Page): Promise<string[]> {
 	logger.log('debug', '🔵 Filtering job links...');
 
 	try {
-		// Get the APPLIED env variable and parse it into a Set of company+batch strings
+		// Get the APPLIED env variable and parse it into an array of company+batch strings
 		const appliedStr = process.env.APPLIED || '';
-		const appliedSet = new Set(
-			appliedStr
-				.split(',')
-				.map((s) => s.trim())
-				.filter(Boolean)
-		);
+		const appliedCompanies = appliedStr
+			.split(',')
+			.map((s) => s.trim())
+			.filter(Boolean);
 
-		// Evaluate in the page context to extract job links and their associated company+batch
-		const jobsDict = await page.evaluate(() => {
-			const jobs: Record<string, string[]> = {};
+		// Evaluate in the page context to extract job links, checking APPLIED status first
+		const filteredLinks = await page.evaluate((appliedCompanies) => {
+			const links: string[] = [];
 			const companyBlocks = Array.from(document.querySelectorAll('div.directory-list > div:not(.loading)'));
 			console.log(`🔵 Found ${companyBlocks.length} company blocks`);
 
 			for (const block of companyBlocks) {
-				console.log(`🔵 Processing block`);
+				console.log(`\n🔵 Processing block`);
 
 				let company = '';
 				let batch = '';
 				const companyAnchors = block.querySelectorAll('a[href^="/companies/"]');
+
 				companyAnchors.forEach((a) => {
 					console.log(`🔵 Found company anchor:\n${a.outerHTML}`);
 				});
 
-				const companyAnchor = companyAnchors[2];
+				let companyAnchor = companyAnchors[2];
 
 				if (companyAnchor) {
 					console.log(`🔵 Found company anchor:\n${companyAnchor.outerHTML}`);
@@ -84,7 +83,7 @@ export async function filterJobLinks(page: Page): Promise<string[]> {
 						company = spans[0].textContent?.trim() || '';
 						batch = spans[1].textContent?.trim() || '';
 					} else {
-						console.log(`❌ No spans found in this block`);
+						console.log(`❌ Not enough spans found in this block (found ${spans.length})`);
 					}
 				} else {
 					console.log(`❌ No company anchor found in this block`);
@@ -94,37 +93,30 @@ export async function filterJobLinks(page: Page): Promise<string[]> {
 
 				const companyBatch = `${company} ${batch}`;
 				console.log(`🔵 Found company: ${companyBatch}`);
-				const jobAnchors = Array.from(block.querySelectorAll('a[href*="/jobs/"]'));
+
+				// Check if this company has already been applied to before scraping job links
+				const isApplied = appliedCompanies.includes(companyBatch);
+
+				if (isApplied) {
+					console.log(`❌ Skipping APPLIED company: ${companyBatch}`);
+					continue; // Skip to next company block
+				}
+
+				console.log(`✅ Including jobs for: ${companyBatch}`);
+
+				// Only scrape job links for companies that haven't been applied to
+				const jobAnchors = Array.from(block.querySelectorAll('a[href^="https://www.workatastartup.com/jobs/"]'));
 
 				for (const a of jobAnchors) {
-					const link = a.getAttribute('href');
-
-					if (link && link.startsWith('https://www.workatastartup.com/jobs/')) {
-						if (!jobs[companyBatch]) jobs[companyBatch] = [];
-						jobs[companyBatch].push(link);
-					}
+					const link = a.getAttribute('href') as string; // the previous querySelector ensures this is never empty or undefined
+					links.push(link);
 				}
 			}
 
-			return jobs;
-		});
+			return links;
+		}, appliedCompanies);
 
-		const allCompanyBatches = Object.keys(jobsDict);
-		logger.log('debug', `🔵 Found ${allCompanyBatches.length} companies with jobs`);
-
-		// Filter out jobs for companies in APPLIED
-		const filteredLinks: string[] = [];
-
-		for (const [companyBatch, links] of Object.entries(jobsDict)) {
-			const excluded = appliedSet.has(companyBatch);
-
-			if (excluded) {
-				logger.log('debug', `❌ Excluding all jobs for APPLIED company: ${companyBatch}`);
-			} else {
-				logger.log('debug', `✅ Including jobs for: ${companyBatch}`);
-				filteredLinks.push(...links);
-			}
-		}
+		logger.log('debug', `🔵 Found ${filteredLinks.length} jobs after filtering`);
 
 		return filteredLinks;
 	} catch (error) {
