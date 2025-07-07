@@ -105,12 +105,16 @@ export async function filterJobLinks(page: Page): Promise<Record<string, string[
 				console.log(`✅ Including jobs for: ${companyBatch}`);
 
 				// Only scrape job links for companies that haven't been applied to
-				const jobAnchors = Array.from(block.querySelectorAll('a[href^="https://www.workatastartup.com/jobs/"]'));
+				// Get job links only from the job-name div to avoid duplicates from "View job" buttons
+				const jobNameDivs = Array.from(block.querySelectorAll('div.job-name'));
 				const jobLinks: string[] = [];
 
-				for (const a of jobAnchors) {
-					const link = a.getAttribute('href') as string; // the previous querySelector ensures this is never empty or undefined
-					jobLinks.push(link);
+				for (const jobNameDiv of jobNameDivs) {
+					const jobAnchor = jobNameDiv.querySelector('a[href^="https://www.workatastartup.com/jobs/"]');
+					if (jobAnchor) {
+						const link = jobAnchor.getAttribute('href') as string;
+						jobLinks.push(link);
+					}
 				}
 
 				if (jobLinks.length > 0) {
