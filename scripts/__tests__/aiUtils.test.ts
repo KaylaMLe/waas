@@ -1,6 +1,6 @@
 import fs from 'fs';
-import logger from '../logger';
-import * as aiUtils from '../aiUtils';
+import logger from '../utils/logger';
+import * as aiUtils from '../utils/aiUtils';
 import openai from '../openAiClient'; // Import the OpenAI client to mock
 import Job from '../classes/Job';
 

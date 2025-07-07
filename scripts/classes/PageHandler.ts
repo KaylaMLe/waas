@@ -1,6 +1,6 @@
 import puppeteer, { Browser, Page } from 'puppeteer';
-import logger from '../logger.js';
-import { withTimeout } from '../utils.js';
+import logger from '../utils/logger.js';
+import { withTimeout } from '../utils/utils.js';
 
 export class PageHandler {
 	private browser: Browser | null = null;

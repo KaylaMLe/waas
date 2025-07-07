@@ -1,6 +1,6 @@
 import puppeteer, { Browser, Page } from 'puppeteer';
 import { PageHandler } from '../classes/PageHandler';
-import { filterJobLinks, findDivByIdPrefix, findBtnByTxt, checkJobApplicationStatus } from '../parseUtils';
+import { filterJobLinks, findDivByIdPrefix, findBtnByTxt, checkJobApplicationStatus } from '../utils/parseUtils';
 
 jest.setTimeout(10000); // Increase timeout for Puppeteer operations
 
@@ -192,8 +192,8 @@ describe('parseUtils', () => {
 
 		it('should handle case where findDivByIdPrefix returns null', async () => {
 			// Mock findDivByIdPrefix to return null
-			const originalFindDivByIdPrefix = require('../parseUtils').findDivByIdPrefix;
-			jest.spyOn(require('../parseUtils'), 'findDivByIdPrefix').mockResolvedValue(null);
+			const originalFindDivByIdPrefix = require('../utils/parseUtils').findDivByIdPrefix;
+			jest.spyOn(require('../utils/parseUtils'), 'findDivByIdPrefix').mockResolvedValue(null);
 
 			const result = await checkJobApplicationStatus(page);
 			expect(result).toBe(false);

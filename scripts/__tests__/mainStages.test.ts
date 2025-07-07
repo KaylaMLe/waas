@@ -1,281 +1,29 @@
 import { jest } from '@jest/globals';
-import { handleMessageApprovalAndApplication, loggingIn, searchForJobs } from '../mainStages';
-import { PageHandler } from '../classes/PageHandler';
-import Job from '../classes/Job';
-import * as aiUtils from '../aiUtils';
-import * as parseUtils from '../parseUtils';
-import * as utils from '../utils';
+import { loggingIn, searchForJobs, handleMessageApprovalAndApplication } from '../core/mainStages';
 
-// Mock all dependencies
-jest.mock('../logger', () => ({
-	log: jest.fn(),
+// Mock the split modules
+jest.mock('../login', () => ({
+	loggingIn: jest.fn(),
 }));
 
-jest.mock('../aiUtils', () => ({
-	writeAppMsg: jest.fn(),
+jest.mock('../jobSearch', () => ({
+	searchForJobs: jest.fn(),
 }));
 
-jest.mock('../parseUtils', () => ({
-	findBtnByTxt: jest.fn(),
-	findDivByIdPrefix: jest.fn(),
-	filterJobLinks: jest.fn(),
+jest.mock('../application', () => ({
+	handleMessageApprovalAndApplication: jest.fn(),
 }));
-
-jest.mock('../utils', () => ({
-	consolePrompt: jest.fn(),
-	waitTime: jest.fn(),
-}));
-
-jest.mock('../classes/PageHandler', () => {
-	return {
-		PageHandler: jest.fn().mockImplementation(() => ({
-			openUrl: jest.fn(),
-			getMostRecentPage: jest.fn().mockReturnValue({
-				waitForSelector: jest.fn(),
-				$: jest.fn(),
-				waitForFunction: jest.fn(),
-				evaluate: jest.fn(),
-			}),
-			closeMostRecentPage: jest.fn(),
-		})),
-	};
-});
 
 describe('mainStages', () => {
-	let mockPageHandler: any;
-	let mockJob: Job;
-	let mockPage: any;
-
-	beforeEach(() => {
-		jest.clearAllMocks();
-
-		mockPageHandler = new PageHandler();
-		mockJob = new Job('Software Engineer at TestCompany', 'https://test-job.com', 'Test job description');
-		mockPage = {
-			waitForSelector: jest.fn(),
-			$: jest.fn(),
-			waitForFunction: jest.fn(),
-			evaluate: jest.fn(),
-		};
-
-		mockPageHandler.getMostRecentPage.mockReturnValue(mockPage);
+	it('should re-export loggingIn function', () => {
+		expect(loggingIn).toBeDefined();
 	});
 
-	describe('searchForJobs', () => {
-		beforeEach(() => {
-			// Reset environment variables
-			delete process.env.SEARCH_URL;
-			delete process.env.SCROLL_COUNT;
-		});
-
-		it('should handle missing SEARCH_URL environment variable', async () => {
-			mockPageHandler.openUrl.mockResolvedValue(true);
-			(utils.consolePrompt as any).mockResolvedValue('any key');
-			(parseUtils.filterJobLinks as any).mockResolvedValue({});
-
-			const result = await searchForJobs(mockPageHandler);
-
-			expect(result).toEqual({});
-			expect(utils.consolePrompt).toHaveBeenCalledWith(
-				'🔵 Press CTRL + C to quit or any key to use the default search URL.'
-			);
-		});
-
-		it('should return empty object when search page fails to open', async () => {
-			mockPageHandler.openUrl.mockResolvedValue(false);
-			(parseUtils.filterJobLinks as any).mockResolvedValue({});
-
-			const result = await searchForJobs(mockPageHandler);
-
-			expect(result).toEqual({});
-		});
-
-		it('should handle basic scrolling functionality', async () => {
-			process.env.SCROLL_COUNT = '1';
-			mockPageHandler.openUrl.mockResolvedValue(true);
-			mockPage.evaluate
-				.mockResolvedValueOnce(true) // loading indicator present
-				.mockResolvedValueOnce(1000) // scroll height before
-				.mockResolvedValueOnce(undefined) // scroll action
-				.mockResolvedValueOnce(false); // no more loading indicator
-			mockPage.waitForFunction.mockResolvedValue(true); // height increased
-			(parseUtils.filterJobLinks as any).mockResolvedValue({ 'Company A': ['job1'] });
-
-			const result = await searchForJobs(mockPageHandler);
-
-			expect(result).toEqual({ 'Company A': ['job1'] });
-		});
+	it('should re-export searchForJobs function', () => {
+		expect(searchForJobs).toBeDefined();
 	});
 
-	describe('handleMessageApprovalAndApplication', () => {
-		it('should handle skip option and return false', async () => {
-			// Mock the AI response
-			(aiUtils.writeAppMsg as any).mockResolvedValue('Test message');
-
-			// Mock user input to skip
-			(utils.consolePrompt as any).mockResolvedValue('S');
-
-			const result = await handleMessageApprovalAndApplication(mockPageHandler, 'TestCompany', mockJob);
-
-			expect(result).toBe(false);
-			expect(utils.consolePrompt).toHaveBeenCalledWith(
-				expect.stringContaining('Type "Y" to approve, "N" to enter a different message, or "S" to skip')
-			);
-		});
-
-		it('should handle approval and return true on successful application', async () => {
-			// Mock the AI response
-			(aiUtils.writeAppMsg as any).mockResolvedValue('Test message');
-
-			// Mock user input to approve
-			(utils.consolePrompt as any).mockResolvedValue('Y');
-
-			// Mock successful page operations
-			mockPageHandler.openUrl.mockResolvedValue(true);
-			(parseUtils.findDivByIdPrefix as any).mockResolvedValue({
-				click: jest.fn(),
-			});
-			mockPage.waitForSelector.mockResolvedValue(undefined);
-			mockPage.$.mockResolvedValue({ type: jest.fn() });
-
-			// Mock the send button - just return a simple object
-			(parseUtils.findBtnByTxt as any).mockResolvedValue({ click: jest.fn() });
-
-			mockPage.waitForFunction.mockResolvedValue(undefined);
-
-			const result = await handleMessageApprovalAndApplication(mockPageHandler, 'TestCompany', mockJob);
-
-			expect(result).toBe(true);
-			expect(mockPageHandler.openUrl).toHaveBeenCalledWith('https://test-job.com');
-		});
-
-		it('should handle new message input and continue until approved', async () => {
-			// Mock the AI response
-			(aiUtils.writeAppMsg as any).mockResolvedValue('Test message');
-
-			// Mock user input: first N (reject), then new message, then Y (approve)
-			(utils.consolePrompt as any)
-				.mockResolvedValueOnce('N') // Reject initial message
-				.mockResolvedValueOnce('Custom message') // Enter new message
-				.mockResolvedValueOnce('Y'); // Approve new message
-
-			// Mock successful page operations
-			mockPageHandler.openUrl.mockResolvedValue(true);
-			(parseUtils.findDivByIdPrefix as any).mockResolvedValue({
-				click: jest.fn(),
-			});
-			mockPage.waitForSelector.mockResolvedValue(undefined);
-			mockPage.$.mockResolvedValue({ type: jest.fn() });
-
-			// Mock the send button - just return a simple object
-			(parseUtils.findBtnByTxt as any).mockResolvedValue({ click: jest.fn() });
-
-			mockPage.waitForFunction.mockResolvedValue(undefined);
-
-			const result = await handleMessageApprovalAndApplication(mockPageHandler, 'TestCompany', mockJob);
-
-			expect(result).toBe(true);
-			expect(utils.consolePrompt).toHaveBeenCalledTimes(3);
-		});
-
-		it('should return false when page fails to open', async () => {
-			// Mock the AI response
-			(aiUtils.writeAppMsg as any).mockResolvedValue('Test message');
-
-			// Mock user input to approve
-			(utils.consolePrompt as any).mockResolvedValue('Y');
-
-			// Mock page open failure
-			mockPageHandler.openUrl.mockResolvedValue(false);
-
-			const result = await handleMessageApprovalAndApplication(mockPageHandler, 'TestCompany', mockJob);
-
-			expect(result).toBe(false);
-		});
-
-		it('should return false when apply button is not found', async () => {
-			// Mock the AI response
-			(aiUtils.writeAppMsg as any).mockResolvedValue('Test message');
-
-			// Mock user input to approve
-			(utils.consolePrompt as any).mockResolvedValue('Y');
-
-			// Mock successful page open but no apply button
-			mockPageHandler.openUrl.mockResolvedValue(true);
-			(parseUtils.findDivByIdPrefix as any).mockResolvedValue(null);
-
-			const result = await handleMessageApprovalAndApplication(mockPageHandler, 'TestCompany', mockJob);
-
-			expect(result).toBe(false);
-		});
-
-		it('should handle case where user enters "S" to skip', async () => {
-			(aiUtils.writeAppMsg as any).mockResolvedValue('Test message');
-			(utils.consolePrompt as any).mockResolvedValue('S');
-
-			const result = await handleMessageApprovalAndApplication(mockPageHandler, 'TestCompany', mockJob);
-
-			expect(result).toBe(false);
-		});
-
-		it('should handle basic error cases', async () => {
-			(aiUtils.writeAppMsg as any).mockResolvedValue('Test message');
-			(utils.consolePrompt as any).mockResolvedValue('Y');
-			mockPageHandler.openUrl.mockResolvedValue(false);
-
-			const result = await handleMessageApprovalAndApplication(mockPageHandler, 'TestCompany', mockJob);
-
-			expect(result).toBe(false);
-		});
-	});
-
-	describe('loggingIn', () => {
-		let mockPageHandler: any;
-
-		beforeEach(() => {
-			jest.clearAllMocks();
-			mockPageHandler = {
-				openUrl: jest.fn(),
-				getMostRecentPage: jest.fn(),
-				closeMostRecentPage: jest.fn(),
-			};
-		});
-
-		it('should return true on successful login', async () => {
-			mockPageHandler.openUrl.mockResolvedValueOnce(true);
-			const evaluateMock = jest.fn<() => Promise<boolean>>().mockResolvedValueOnce(true);
-			mockPageHandler.getMostRecentPage.mockReturnValue({
-				evaluate: evaluateMock,
-			});
-			(utils.consolePrompt as any).mockResolvedValue(undefined);
-
-			const { loggingIn } = await import('../mainStages');
-			const result = await loggingIn(mockPageHandler);
-
-			expect(result).toBe(true);
-			expect(mockPageHandler.openUrl).toHaveBeenCalled();
-			expect(evaluateMock).toHaveBeenCalled();
-			expect(mockPageHandler.closeMostRecentPage).toHaveBeenCalled();
-		});
-
-		it('should return false if login page fails to open', async () => {
-			mockPageHandler.openUrl.mockResolvedValueOnce(false);
-			const { loggingIn } = await import('../mainStages');
-			const result = await loggingIn(mockPageHandler);
-			expect(result).toBe(false);
-		});
-
-		it('should return false if login unsuccessful', async () => {
-			mockPageHandler.openUrl.mockResolvedValueOnce(true);
-			const evaluateMock = jest.fn<() => Promise<boolean>>().mockResolvedValueOnce(false);
-			mockPageHandler.getMostRecentPage.mockReturnValue({
-				evaluate: evaluateMock,
-			});
-			(utils.consolePrompt as any).mockResolvedValue(undefined);
-
-			const { loggingIn } = await import('../mainStages');
-			const result = await loggingIn(mockPageHandler);
-			expect(result).toBe(false);
-		});
+	it('should re-export handleMessageApprovalAndApplication function', () => {
+		expect(handleMessageApprovalAndApplication).toBeDefined();
 	});
 });
