@@ -1,8 +1,8 @@
-import { checkAppMethod, compareJobs } from './scripts/aiUtils.js';
-import logger from './scripts/logger.js';
-import { loggingIn, searchForJobs, handleMessageApprovalAndApplication } from './scripts/mainStages.js';
-import { checkJobApplicationStatus } from './scripts/parseUtils.js';
-import { waitTime } from './scripts/utils.js';
+import { checkAppMethod, compareJobs } from './scripts/utils/aiUtils.js';
+import logger from './scripts/utils/logger.js';
+import { loggingIn, searchForJobs, handleMessageApprovalAndApplication } from './scripts/core/mainStages.js';
+import { checkJobApplicationStatus } from './scripts/utils/parseUtils.js';
+import { waitTime } from './scripts/utils/utils.js';
 import Company from './scripts/classes/Company.js';
 import Job from './scripts/classes/Job.js';
 import { PageHandler } from './scripts/classes/PageHandler.js';

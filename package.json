@@ -2,9 +2,8 @@
 	"type": "module",
 	"scripts": {
 		"build": "npx tsc --build",
-		"clear": "powershell -Command \"Get-ChildItem -Path . -Recurse -Filter *.js | Where-Object { $_.FullName -notmatch 'node_modules' -and $_.Name -ne 'jest.config.js' } | Remove-Item\"",
 		"go": "npm run build && npm run start",
-		"start": "node --env-file=.env ./main.js",
+		"start": "node --env-file=.env ./dist/main.js",
 		"test": "jest --coverage"
 	},
 	"dependencies": {
