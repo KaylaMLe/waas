@@ -151,14 +151,41 @@ export async function checkJobApplicationStatus(page: any): Promise<boolean> {
 	try {
 		// If running in a test environment, use DOM directly
 		if (typeof page.$ === 'function') {
-			const applyBtn = await page.$('#ApplyButton');
-			if (!applyBtn) return false;
-			const text = applyBtn.textContent || (await page.evaluate((b: any) => b.innerText, applyBtn));
-			return text === 'Applied';
+			const applyDiv = await page.$("div[id^='ApplyButton']");
+			if (!applyDiv) {
+				logger.log('debug', '❌ No div found with ID starting with ApplyButton');
+				return false;
+			}
+			logger.log('debug', '✅ Found div with ID starting with ApplyButton');
+
+			// Find anchor inside the div
+			const anchor = await page.evaluateHandle((div: any) => div.querySelector('a'), applyDiv);
+			if (!anchor) {
+				logger.log('debug', '❌ No anchor tag found inside ApplyButton div');
+				return false;
+			}
+			logger.log('debug', '✅ Found anchor tag inside ApplyButton div');
+
+			const text = await page.evaluate((a: any) => a.textContent, anchor);
+			logger.log('debug', `🔵 Anchor text content: '${text}'`);
+			return !!(text && text.trim() === 'Applied');
 		}
-		// Fallback for test: use document.getElementById
-		const btn = document.getElementById('ApplyButton');
-		return btn?.textContent === 'Applied';
+		// Fallback for test: use document.querySelector
+		const applyDiv = document.querySelector("div[id^='ApplyButton']");
+		if (!applyDiv) {
+			logger.log('debug', '❌ No div found with ID starting with ApplyButton (test env)');
+			return false;
+		}
+		logger.log('debug', '✅ Found div with ID starting with ApplyButton (test env)');
+		const anchor = applyDiv.querySelector('a');
+		if (!anchor) {
+			logger.log('debug', '❌ No anchor tag found inside ApplyButton div (test env)');
+			return false;
+		}
+		logger.log('debug', '✅ Found anchor tag inside ApplyButton div (test env)');
+		const text = anchor.textContent;
+		logger.log('debug', `🔵 Anchor text content (test env): '${text}'`);
+		return !!(text && text.trim() === 'Applied');
 	} catch (error) {
 		logger.log('error', `⚠️ Error checking job application status: ${error}`);
 		return false;

@@ -28,6 +28,7 @@ describe('parseUtils', () => {
 			$: jest.fn(),
 			$$: jest.fn(),
 			evaluate: jest.fn(),
+			evaluateHandle: jest.fn(),
 		};
 	});
 
@@ -268,54 +269,87 @@ describe('parseUtils', () => {
 	});
 
 	describe('checkJobApplicationStatus', () => {
-		it('should return true when job has been applied using Puppeteer', async () => {
+		let originalQuerySelector: any;
+		let originalQuerySelectorAll: any;
+		let mockPage: any;
+
+		beforeEach(() => {
+			originalQuerySelector = document.querySelector;
+			originalQuerySelectorAll = document.querySelectorAll;
+			mockPage = {
+				$: jest.fn() as jest.Mock,
+				$$: jest.fn() as jest.Mock,
+				evaluate: jest.fn() as jest.Mock,
+				evaluateHandle: jest.fn() as jest.Mock,
+			};
+		});
+
+		afterEach(() => {
+			document.querySelector = originalQuerySelector;
+			document.querySelectorAll = originalQuerySelectorAll;
+		});
+
+		it('should return true when Puppeteer finds a div with id^=ApplyButton and anchor with text "Applied"', async () => {
 			const { checkJobApplicationStatus } = await import('../../utils/parseUtils.js');
 
-			const mockApplyBtn = { textContent: 'Applied' };
-			// @ts-ignore
-			mockPage.$ = jest.fn().mockResolvedValue(mockApplyBtn);
-			// @ts-ignore
-			mockPage.evaluate = jest.fn().mockResolvedValue('Applied');
+			const mockAnchor = {} as unknown as never;
+			const mockDiv = {} as unknown as never;
+			mockPage.$ = jest.fn().mockResolvedValue(mockDiv);
+			mockPage.evaluateHandle = jest.fn().mockResolvedValue(mockAnchor);
+			mockPage.evaluate = jest.fn().mockResolvedValue('Applied' as unknown as never);
 
 			const result = await checkJobApplicationStatus(mockPage);
 
-			expect(mockPage.$).toHaveBeenCalledWith('#ApplyButton');
+			expect(mockPage.$).toHaveBeenCalledWith("div[id^='ApplyButton']");
+			expect(mockPage.evaluateHandle).toHaveBeenCalledWith(expect.any(Function), mockDiv);
+			expect(mockPage.evaluate).toHaveBeenCalledWith(expect.any(Function), mockAnchor);
 			expect(result).toBe(true);
 		});
 
-		it('should return false when job has not been applied using Puppeteer', async () => {
+		it('should return false when Puppeteer finds anchor with text not "Applied"', async () => {
 			const { checkJobApplicationStatus } = await import('../../utils/parseUtils.js');
 
-			const mockApplyBtn = { textContent: 'Apply' };
-			// @ts-ignore
-			mockPage.$ = jest.fn().mockResolvedValue(mockApplyBtn);
-			// @ts-ignore
-			mockPage.evaluate = jest.fn().mockResolvedValue('Apply');
+			const mockAnchor = {} as unknown as never;
+			const mockDiv = {} as unknown as never;
+			mockPage.$ = jest.fn().mockResolvedValue(mockDiv);
+			mockPage.evaluateHandle = jest.fn().mockResolvedValue(mockAnchor);
+			mockPage.evaluate = jest.fn().mockResolvedValue('Apply' as unknown as never);
 
 			const result = await checkJobApplicationStatus(mockPage);
 
 			expect(result).toBe(false);
 		});
 
-		it('should return false when apply button not found using Puppeteer', async () => {
+		it('should return false when Puppeteer finds no div', async () => {
 			const { checkJobApplicationStatus } = await import('../../utils/parseUtils.js');
 
-			// @ts-ignore
-			mockPage.$ = jest.fn().mockResolvedValue(null);
+			mockPage.$ = jest.fn().mockResolvedValue(null as unknown as never);
 
 			const result = await checkJobApplicationStatus(mockPage);
 
 			expect(result).toBe(false);
 		});
 
-		it('should return true when job has been applied using DOM fallback', async () => {
+		it('should return false when Puppeteer finds div but no anchor', async () => {
 			const { checkJobApplicationStatus } = await import('../../utils/parseUtils.js');
 
-			// Mock document.getElementById
-			const mockButton = { textContent: 'Applied' };
-			Object.defineProperty(document, 'getElementById', {
-				value: jest.fn().mockReturnValue(mockButton),
-				writable: true,
+			const mockDiv = {} as unknown as never;
+			mockPage.$ = jest.fn().mockResolvedValue(mockDiv);
+			mockPage.evaluateHandle = jest.fn().mockResolvedValue(null as unknown as never);
+
+			const result = await checkJobApplicationStatus(mockPage);
+
+			expect(result).toBe(false);
+		});
+
+		it('should return true in DOM fallback when div and anchor with text "Applied" are found', async () => {
+			const { checkJobApplicationStatus } = await import('../../utils/parseUtils.js');
+
+			const mockAnchor = { textContent: 'Applied' } as unknown as never;
+			const mockDiv = { querySelector: jest.fn().mockReturnValue(mockAnchor) } as unknown as never;
+			document.querySelector = jest.fn().mockImplementation((selector) => {
+				if (selector === "div[id^='ApplyButton']") return mockDiv;
+				return null as unknown as never;
 			});
 
 			const result = await checkJobApplicationStatus({});
@@ -323,13 +357,14 @@ describe('parseUtils', () => {
 			expect(result).toBe(true);
 		});
 
-		it('should return false when job has not been applied using DOM fallback', async () => {
+		it('should return false in DOM fallback when anchor text is not "Applied"', async () => {
 			const { checkJobApplicationStatus } = await import('../../utils/parseUtils.js');
 
-			const mockButton = { textContent: 'Apply' };
-			Object.defineProperty(document, 'getElementById', {
-				value: jest.fn().mockReturnValue(mockButton),
-				writable: true,
+			const mockAnchor = { textContent: 'Apply' } as unknown as never;
+			const mockDiv = { querySelector: jest.fn().mockReturnValue(mockAnchor) } as unknown as never;
+			document.querySelector = jest.fn().mockImplementation((selector) => {
+				if (selector === "div[id^='ApplyButton']") return mockDiv;
+				return null as unknown as never;
 			});
 
 			const result = await checkJobApplicationStatus({});
@@ -337,12 +372,23 @@ describe('parseUtils', () => {
 			expect(result).toBe(false);
 		});
 
-		it('should return false when apply button not found using DOM fallback', async () => {
+		it('should return false in DOM fallback when no div is found', async () => {
 			const { checkJobApplicationStatus } = await import('../../utils/parseUtils.js');
 
-			Object.defineProperty(document, 'getElementById', {
-				value: jest.fn().mockReturnValue(null),
-				writable: true,
+			document.querySelector = jest.fn().mockReturnValue(null as unknown as never);
+
+			const result = await checkJobApplicationStatus({});
+
+			expect(result).toBe(false);
+		});
+
+		it('should return false in DOM fallback when div has no anchor', async () => {
+			const { checkJobApplicationStatus } = await import('../../utils/parseUtils.js');
+
+			const mockDiv = { querySelector: jest.fn().mockReturnValue(null as unknown as never) } as unknown as never;
+			document.querySelector = jest.fn().mockImplementation((selector) => {
+				if (selector === "div[id^='ApplyButton']") return mockDiv;
+				return null as unknown as never;
 			});
 
 			const result = await checkJobApplicationStatus({});
@@ -353,8 +399,7 @@ describe('parseUtils', () => {
 		it('should handle errors and return false', async () => {
 			const { checkJobApplicationStatus } = await import('../../utils/parseUtils.js');
 
-			// @ts-ignore
-			mockPage.$ = jest.fn().mockRejectedValue(new Error('Test error'));
+			mockPage.$ = jest.fn().mockRejectedValue(new Error('Test error') as unknown as never);
 
 			const result = await checkJobApplicationStatus(mockPage);
 
