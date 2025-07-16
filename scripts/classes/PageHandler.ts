@@ -28,6 +28,12 @@ export class PageHandler {
 		}
 	}
 
+	/**
+	 * Opens a new page with the specified URL.
+	 *
+	 * @param url - The URL to navigate to
+	 * @returns A promise that resolves to true if the page was opened successfully, false otherwise
+	 */
 	public async openUrl(url: string): Promise<boolean> {
 		const browserLoaded = await withTimeout(this.browserLoading!, 4000).catch(() => false);
 		if (!browserLoaded || !this.browser) {
@@ -43,10 +49,10 @@ export class PageHandler {
 		if (!page) return false;
 
 		try {
-			logger.log('info', `🔵 Opening ${url}...`);
+			logger.log('debug', `🔵 Opening ${url}...`);
 			await page.goto(url, { waitUntil: 'domcontentloaded' });
 			this.pages.push(page);
-			logger.log('info', '✅ Page opened successfully.');
+			logger.log('debug', '✅ Page opened successfully.');
 			return true;
 		} catch (error) {
 			logger.log('error', '❌ Failed to open URL:', error);
@@ -55,6 +61,12 @@ export class PageHandler {
 		}
 	}
 
+	/**
+	 * Gets the most recently opened page.
+	 *
+	 * @returns The most recent Page object
+	 * @throws Error if no pages are currently open
+	 */
 	public getMostRecentPage(): Page {
 		if (this.pages.length === 0) {
 			throw new Error('⚠️ No pages are currently open.');
@@ -63,14 +75,20 @@ export class PageHandler {
 		return this.pages[this.pages.length - 1];
 	}
 
+	/**
+	 * Closes the most recently opened page.
+	 */
 	public async closeMostRecentPage(): Promise<void> {
 		const page = this.pages.pop();
 		if (page) {
-			logger.log('info', '🔵 Closing most recent page...');
+			logger.log('debug', '🔵 Closing most recent page...');
 			await page.close();
 		}
 	}
 
+	/**
+	 * Closes all open pages and the browser instance.
+	 */
 	public async closeBrowser(): Promise<void> {
 		logger.log('info', '🔵 Closing all pages and browser...');
 		for (const page of this.pages) await page.close();

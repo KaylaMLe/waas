@@ -22,7 +22,7 @@ export async function getResponse(prompt: string, model: string = 'gpt-4o-mini')
 }
 
 /**
- * Get a response from OpenAI's model with a PDF attachment.
+ * Get a response from OpenAI's model with a file attachment (currently supports PDF).
  *
  * @param sysPrompt - the system prompt to send to the model
  * @param infoPrompt - the user prompt to send to the model
@@ -76,10 +76,9 @@ export async function getResponseWithFile(
 
 /**
  * Analyzes the job description to determine the application method.
- * also prints the application method to the console.
  *
  * @param jobText - the body text of the job posting page
- * @returns a promise that resolves to the application method if one is specified, 'none' otherwise, or 'error' if an error occurs
+ * @returns a promise that resolves to the application method if one is specified, 'none' otherwise, or null if an error occurs
  */
 export async function checkAppMethod(jobText: string): Promise<string | null> {
 	const config = getModelConfig();
