@@ -9,6 +9,26 @@ import { PageHandler } from './scripts/classes/PageHandler.js';
 
 const pageHandler = new PageHandler();
 
+let isShuttingDown = false;
+
+async function gracefulShutdown(signal = 'SIGINT') {
+	if (isShuttingDown) return;
+	isShuttingDown = true;
+	logger.log('info', `🟡 Received ${signal}. Shutting down gracefully...`);
+
+	try {
+		await pageHandler.closeBrowser();
+		logger.log('info', '🔵 Browser closed. Exiting.');
+	} catch (err) {
+		logger.log('error', '❌ Error during shutdown:', err);
+	} finally {
+		process.exit(0);
+	}
+}
+
+process.on('SIGINT', () => gracefulShutdown('SIGINT'));
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+
 async function main(): Promise<void> {
 	logger.log('info', '🔵 Logging in...');
 	const loggedIn = await loggingIn(pageHandler);
