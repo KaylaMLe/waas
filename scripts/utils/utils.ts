@@ -46,7 +46,7 @@ export async function consolePrompt(prompt: string): Promise<string> {
 }
 
 /**
- * Loads the environment variable of companies already applied to
+ * Loads the environment variable of companies already applied to and creates Company objects.
  *
  * @returns A Record with company names as keys and Company objects as values.
  *          If no companies are found, an empty object is returned.

@@ -18,6 +18,13 @@ jest.mock('../../openaiClient', () => ({
 		},
 	},
 }));
+jest.mock('../../utils/config', () => ({
+	getModelConfig: jest.fn(() => ({
+		appMethodModel: 'gpt-4o-mini',
+		jobCompareModel: 'gpt-4o-mini',
+		appMessageModel: 'gpt-4o-mini',
+	})),
+}));
 
 describe('aiUtils.ts', () => {
 	let mockCreate: jest.Mock;
@@ -44,6 +51,26 @@ describe('aiUtils.ts', () => {
 			expect(result).toBe('Mocked response content');
 			expect(mockCreate).toHaveBeenCalledWith({
 				model: 'gpt-4o-mini',
+				messages: [{ role: 'user', content: 'Test prompt' }],
+			});
+		});
+
+		it('should use custom model when provided', async () => {
+			mockCreate.mockResolvedValueOnce({
+				choices: [
+					{
+						message: {
+							content: 'Mocked response content',
+						},
+					},
+				],
+			});
+
+			const result = await aiUtils.getResponse('Test prompt', 'gpt-4');
+
+			expect(result).toBe('Mocked response content');
+			expect(mockCreate).toHaveBeenCalledWith({
+				model: 'gpt-4',
 				messages: [{ role: 'user', content: 'Test prompt' }],
 			});
 		});
@@ -76,13 +103,17 @@ describe('aiUtils.ts', () => {
 				],
 			});
 
-			const result = await aiUtils.getResponseWithFile('Test prompt', 'resume.pdf');
+			const result = await aiUtils.getResponseWithFile('Test system prompt', 'Test user prompt', 'resume.pdf');
 
 			// Assertions
 			expect(result).toBe('Mocked response content');
 			expect(mockCreate).toHaveBeenCalledWith({
 				model: 'gpt-4o-mini',
 				messages: [
+					{
+						role: 'system',
+						content: 'Test system prompt',
+					},
 					{
 						role: 'user',
 						content: [
@@ -96,7 +127,55 @@ describe('aiUtils.ts', () => {
 							},
 							{
 								type: 'text',
-								text: 'Test prompt',
+								text: 'Test user prompt',
+							},
+						],
+					},
+				],
+			});
+		});
+
+		it('should use custom model when provided', async () => {
+			// Mock file system behavior
+			(fs.existsSync as jest.Mock).mockReturnValue(true);
+			(fs.readFileSync as jest.Mock).mockReturnValue(Buffer.from('PDF content'));
+
+			// Mock OpenAI response
+			mockCreate.mockResolvedValueOnce({
+				choices: [
+					{
+						message: {
+							content: 'Mocked response content',
+						},
+					},
+				],
+			});
+
+			const result = await aiUtils.getResponseWithFile('Test system prompt', 'Test user prompt', 'resume.pdf', 'gpt-4');
+
+			// Assertions
+			expect(result).toBe('Mocked response content');
+			expect(mockCreate).toHaveBeenCalledWith({
+				model: 'gpt-4',
+				messages: [
+					{
+						role: 'system',
+						content: 'Test system prompt',
+					},
+					{
+						role: 'user',
+						content: [
+							{
+								// @ts-ignore
+								type: 'file',
+								file: {
+									filename: 'resume.pdf',
+									file_data: expect.stringContaining('data:application/pdf;base64,'),
+								},
+							},
+							{
+								type: 'text',
+								text: 'Test user prompt',
 							},
 						],
 					},
@@ -107,7 +186,7 @@ describe('aiUtils.ts', () => {
 		it('should return null if the file does not exist', async () => {
 			(fs.existsSync as jest.Mock).mockReturnValue(false);
 
-			const result = await aiUtils.getResponseWithFile('Test prompt', 'nonexistent.pdf');
+			const result = await aiUtils.getResponseWithFile('Test system prompt', 'Test user prompt', 'nonexistent.pdf');
 
 			expect(result).toBeNull();
 			expect(logger.log).toHaveBeenCalledWith('warn', '❌ File not found: nonexistent.pdf');

@@ -9,7 +9,8 @@
 		"strict": true,
 		"esModuleInterop": true,
 		"skipLibCheck": true,
-		"forceConsistentCasingInFileNames": true
+		"forceConsistentCasingInFileNames": true,
+		"resolveJsonModule": true
 		// Note: Use .js extensions in import paths for ES module compatibility
 	},
 	"exclude": ["scripts/__tests__/**/*", "coverage", "node_modules"]

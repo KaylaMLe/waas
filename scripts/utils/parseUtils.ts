@@ -26,6 +26,13 @@ export async function findDivByIdPrefix(page: Page, idPrefix: string): Promise<E
 	}
 }
 
+/**
+ * Finds a button element by its text content, supporting both Puppeteer pages and test environments.
+ *
+ * @param page - The Puppeteer page object or test environment context to search within.
+ * @param innerText - The exact text content to search for in button elements.
+ * @returns A promise that resolves to the button element if found, or null if not found.
+ */
 export async function findBtnByTxt(page: any, innerText: string): Promise<any | null> {
 	try {
 		// If running in a test environment, use DOM directly
@@ -48,6 +55,13 @@ export async function findBtnByTxt(page: any, innerText: string): Promise<any | 
 	}
 }
 
+/**
+ * Extracts and filters job links from the WorkAtAStartup directory page, grouped by company.
+ * Filters out companies that have already been applied to based on the APPLIED environment variable.
+ *
+ * @param page - The Puppeteer page object containing the WorkAtAStartup directory.
+ * @returns A promise that resolves to a record with company names as keys and arrays of job URLs as values.
+ */
 export async function filterJobLinks(page: Page): Promise<Record<string, string[]>> {
 	logger.log('debug', '🔵 Filtering job links...');
 
@@ -142,9 +156,10 @@ export async function filterJobLinks(page: Page): Promise<Record<string, string[
 }
 
 /**
- * Checks if a job has been applied to by examining the apply button text
+ * Checks if a job has been applied to by examining the ApplyButton div and its anchor text.
+ * Supports both Puppeteer pages and test environments.
  *
- * @param page - The Puppeteer page object containing the job
+ * @param page - The Puppeteer page object or test environment context containing the job
  * @returns A promise that resolves to true if the job has been applied to, false otherwise
  */
 export async function checkJobApplicationStatus(page: any): Promise<boolean> {
