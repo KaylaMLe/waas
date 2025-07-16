@@ -42,6 +42,11 @@ This project automates the process of applying to jobs on [WorkAtAStartup](https
    APPLIED="Comma-separated list of companies you've already applied to"
    RESUME_PATH="Path to your resume PDF"
    SCROLL_COUNT="5"
+
+   # Optional: Configure different AI models for each prompt type
+   APP_METHOD_MODEL="gpt-4o-mini"
+   JOB_COMPARE_MODEL="gpt-4o-mini"
+   APP_MESSAGE_MODEL="gpt-4o-mini"
    ```
 
 4. **Create AI Prompts File**:
@@ -131,6 +136,7 @@ This project automates the process of applying to jobs on [WorkAtAStartup](https
     │   └── mainStages.ts # Main workflow orchestration
     ├── utils/           # Utility modules
     │   ├── aiUtils.ts   # OpenAI integration for generating messages and job comparison
+    │   ├── config.ts    # Configuration management for AI models
     │   ├── debugUtils.ts # Debugging utilities
     │   ├── logger.ts    # Logging functionality
     │   ├── parseUtils.ts # Functions for parsing web elements and infinite scrolling
@@ -150,6 +156,28 @@ This project automates the process of applying to jobs on [WorkAtAStartup](https
 - `SCROLL_COUNT` [optional]: Number of times to scroll down to load more job listings.
   - Set to "inf" for infinite scrolling until no more results are available.
   - Default is "0" (no scrolling).
+
+### AI Model Configuration [optional]
+
+You can configure different OpenAI models for each type of prompt by setting these environment variables:
+
+- `APP_METHOD_MODEL` [optional]: The OpenAI model to use for analyzing job descriptions to detect application methods.
+  - Default: `gpt-4o-mini`
+  - Example: `gpt-4`, `gpt-4-turbo`, `gpt-3.5-turbo`
+- `JOB_COMPARE_MODEL` [optional]: The OpenAI model to use for comparing multiple jobs to find the best fit.
+  - Default: `gpt-4o-mini`
+  - Example: `gpt-4`, `gpt-4-turbo`, `gpt-3.5-turbo`
+- `APP_MESSAGE_MODEL` [optional]: The OpenAI model to use for generating application messages.
+  - Default: `gpt-4o-mini`
+  - Example: `gpt-4`, `gpt-4-turbo`, `gpt-3.5-turbo`
+
+Example configuration:
+
+```env
+APP_METHOD_MODEL="gpt-3.5-turbo"
+JOB_COMPARE_MODEL="gpt-4"
+APP_MESSAGE_MODEL="gpt-4-turbo"
+```
 
 ⚠️ Note: Login credentials (`YCUSER` and `YCPSWD`) are no longer required as the login process is now manual.
 

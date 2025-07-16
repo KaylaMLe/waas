@@ -3,16 +3,18 @@ import openai from '../openAiClient.js'; // Import the singleton instance
 import Job from '../classes/Job.js';
 import { appMethodPrompt, appMsgPrompt, jobComparePrompt } from './prompts.js';
 import logger from './logger.js';
+import { getModelConfig } from './config.js';
 
 /**
- * Get a response from OpenAI's GPT-4o-mini model.
+ * Get a response from OpenAI's model.
  *
  * @param prompt - a string to send to the model as a message with the role of 'user'
+ * @param model - the model to use (defaults to gpt-4o-mini)
  * @returns a promise that resolves to the model's response as a string, or null if an error occurs
  */
-export async function getResponse(prompt: string): Promise<string | null> {
+export async function getResponse(prompt: string, model: string = 'gpt-4o-mini'): Promise<string | null> {
 	const response = await openai.chat.completions.create({
-		model: 'gpt-4o-mini',
+		model,
 		messages: [{ role: 'user', content: prompt }],
 	});
 
@@ -20,16 +22,19 @@ export async function getResponse(prompt: string): Promise<string | null> {
 }
 
 /**
- * Get a response from OpenAI's GPT-4o-mini model with a PDF attachment.
+ * Get a response from OpenAI's model with a PDF attachment.
  *
- * @param prompt - a string to send to the model as a message with the role of 'user'
+ * @param sysPrompt - the system prompt to send to the model
+ * @param infoPrompt - the user prompt to send to the model
  * @param filePath - the path to the file to be sent to the model
+ * @param model - the model to use (defaults to gpt-4o-mini)
  * @returns a promise that resolves to the model's response as a string, or null if an error occurs
  */
 export async function getResponseWithFile(
 	sysPrompt: string,
 	infoPrompt: string,
-	filePath: string
+	filePath: string,
+	model: string = 'gpt-4o-mini'
 ): Promise<string | null> {
 	if (!fs.existsSync(filePath)) {
 		logger.log('warn', `❌ File not found: ${filePath}`);
@@ -40,7 +45,7 @@ export async function getResponseWithFile(
 	const base64Pdf = pdfData.toString('base64');
 
 	const response = await openai.chat.completions.create({
-		model: 'gpt-4o-mini',
+		model,
 		messages: [
 			{
 				role: 'system',
@@ -77,7 +82,8 @@ export async function getResponseWithFile(
  * @returns a promise that resolves to the application method if one is specified, 'none' otherwise, or 'error' if an error occurs
  */
 export async function checkAppMethod(jobText: string): Promise<string | null> {
-	const methodResponse = await getResponse(appMethodPrompt + jobText);
+	const config = getModelConfig();
+	const methodResponse = await getResponse(appMethodPrompt + jobText, config.appMethodModel);
 	return methodResponse;
 }
 
@@ -88,12 +94,14 @@ export async function checkAppMethod(jobText: string): Promise<string | null> {
  * @returns a promise that resolves to the best job if one is found, or null if no suitable job is found
  */
 export async function compareJobs(jobs: Job[]): Promise<Job | null> {
+	const config = getModelConfig();
 	const formattedJobs = jobs.map((job) => `\`\`\`${job.link}\n-----\n${job.desc}\`\`\``).join('\n\n');
 
 	const linkResponse = await getResponseWithFile(
 		jobComparePrompt,
 		formattedJobs,
-		process.env.RESUME_PATH || 'resume.pdf'
+		process.env.RESUME_PATH || 'resume.pdf',
+		config.jobCompareModel
 	);
 
 	if (!linkResponse) {
@@ -118,7 +126,13 @@ export async function compareJobs(jobs: Job[]): Promise<Job | null> {
  * @returns a promise that resolves to the application message if one is generated, or null if an error occurs
  */
 export async function writeAppMsg(jobDesc: string): Promise<string | null> {
-	const msgResponse = await getResponseWithFile(appMsgPrompt, jobDesc, process.env.RESUME_PATH || 'resume.pdf');
+	const config = getModelConfig();
+	const msgResponse = await getResponseWithFile(
+		appMsgPrompt,
+		jobDesc,
+		process.env.RESUME_PATH || 'resume.pdf',
+		config.appMessageModel
+	);
 
 	if (msgResponse) {
 		logger.log('info', `🟩 Application message: ${msgResponse}`);
