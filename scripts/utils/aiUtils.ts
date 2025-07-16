@@ -26,7 +26,11 @@ export async function getResponse(prompt: string): Promise<string | null> {
  * @param filePath - the path to the file to be sent to the model
  * @returns a promise that resolves to the model's response as a string, or null if an error occurs
  */
-export async function getResponseWithFile(prompt: string, filePath: string): Promise<string | null> {
+export async function getResponseWithFile(
+	sysPrompt: string,
+	infoPrompt: string,
+	filePath: string
+): Promise<string | null> {
 	if (!fs.existsSync(filePath)) {
 		logger.log('warn', `❌ File not found: ${filePath}`);
 		return null;
@@ -38,6 +42,10 @@ export async function getResponseWithFile(prompt: string, filePath: string): Pro
 	const response = await openai.chat.completions.create({
 		model: 'gpt-4o-mini',
 		messages: [
+			{
+				role: 'system',
+				content: sysPrompt,
+			},
 			{
 				role: 'user',
 				content: [
@@ -51,7 +59,7 @@ export async function getResponseWithFile(prompt: string, filePath: string): Pro
 					},
 					{
 						type: 'text',
-						text: prompt,
+						text: infoPrompt,
 					},
 				],
 			},
@@ -81,9 +89,12 @@ export async function checkAppMethod(jobText: string): Promise<string | null> {
  */
 export async function compareJobs(jobs: Job[]): Promise<Job | null> {
 	const formattedJobs = jobs.map((job) => `\`\`\`${job.link}\n-----\n${job.desc}\`\`\``).join('\n\n');
-	const comparePrompt = jobComparePrompt + '\n\n\n' + formattedJobs;
 
-	const linkResponse = await getResponseWithFile(comparePrompt, process.env.RESUME_PATH || 'resume.pdf');
+	const linkResponse = await getResponseWithFile(
+		jobComparePrompt,
+		formattedJobs,
+		process.env.RESUME_PATH || 'resume.pdf'
+	);
 
 	if (!linkResponse) {
 		logger.log('warn', '❌ Failed to retrieve job comparison.');
@@ -107,8 +118,7 @@ export async function compareJobs(jobs: Job[]): Promise<Job | null> {
  * @returns a promise that resolves to the application message if one is generated, or null if an error occurs
  */
 export async function writeAppMsg(jobDesc: string): Promise<string | null> {
-	const prompt = appMsgPrompt + '\n\n\n' + jobDesc;
-	const msgResponse = await getResponseWithFile(prompt, process.env.RESUME_PATH || 'resume.pdf');
+	const msgResponse = await getResponseWithFile(appMsgPrompt, jobDesc, process.env.RESUME_PATH || 'resume.pdf');
 
 	if (msgResponse) {
 		logger.log('info', `🟩 Application message: ${msgResponse}`);

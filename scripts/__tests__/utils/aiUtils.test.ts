@@ -76,13 +76,17 @@ describe('aiUtils.ts', () => {
 				],
 			});
 
-			const result = await aiUtils.getResponseWithFile('Test prompt', 'resume.pdf');
+			const result = await aiUtils.getResponseWithFile('Test system prompt', 'Test user prompt', 'resume.pdf');
 
 			// Assertions
 			expect(result).toBe('Mocked response content');
 			expect(mockCreate).toHaveBeenCalledWith({
 				model: 'gpt-4o-mini',
 				messages: [
+					{
+						role: 'system',
+						content: 'Test system prompt',
+					},
 					{
 						role: 'user',
 						content: [
@@ -96,7 +100,7 @@ describe('aiUtils.ts', () => {
 							},
 							{
 								type: 'text',
-								text: 'Test prompt',
+								text: 'Test user prompt',
 							},
 						],
 					},
@@ -107,7 +111,7 @@ describe('aiUtils.ts', () => {
 		it('should return null if the file does not exist', async () => {
 			(fs.existsSync as jest.Mock).mockReturnValue(false);
 
-			const result = await aiUtils.getResponseWithFile('Test prompt', 'nonexistent.pdf');
+			const result = await aiUtils.getResponseWithFile('Test system prompt', 'Test user prompt', 'nonexistent.pdf');
 
 			expect(result).toBeNull();
 			expect(logger.log).toHaveBeenCalledWith('warn', '❌ File not found: nonexistent.pdf');
