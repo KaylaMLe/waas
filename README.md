@@ -17,7 +17,7 @@ This project automates the process of applying to jobs on [WorkAtAStartup](https
 
 - Node.js (v16 or later)
 - npm (v7 or later)
-- A valid Y Combinator account
+- A Y Combinator account
 - An OpenAI API key
 
 ## Installation
@@ -44,9 +44,11 @@ This project automates the process of applying to jobs on [WorkAtAStartup](https
    SCROLL_COUNT="5"
    ```
 
-   ⚠️ These credentials can be used to access your WorkAtAStartup account as well as view and modify account data. Practice extreme caution when using this tool.
+4. **Customize AI Prompts** (Optional):
 
-4. Build the TypeScript files:
+   The AI system prompts are stored in `prompts.yaml` at the project root. You can edit these prompts to customize the application message generation and job comparison logic without modifying the code.
+
+5. Build the TypeScript files:
    ```bash
    npm run build
    ```
@@ -115,6 +117,7 @@ This project automates the process of applying to jobs on [WorkAtAStartup](https
 ├── LICENSE.txt          # License information
 ├── main.ts              # Entry point of the application
 ├── package.json         # Project metadata and scripts
+├── prompts.yaml         # AI system prompts (externalized for easy editing)
 ├── tsconfig.json        # TypeScript configuration
 ├── tsconfig.tsbuildinfo # TypeScript build information
 └── scripts/             # Contains all the core modules
@@ -122,13 +125,20 @@ This project automates the process of applying to jobs on [WorkAtAStartup](https
     │   ├── Company.ts   # Represents a company and its Jobs
     │   ├── Job.ts       # Represents a job listing
     │   └── PageHandler.ts # Puppeteer browser and page management
-    ├── aiUtils.ts       # OpenAI integration for generating messages and job comparison
-    ├── debugUtils.ts    # Debugging utilities
-    ├── logger.ts        # Logging functionality
-    ├── mainStages.ts    # Core workflow stages (login, application)
-    ├── parseUtils.ts    # Functions for parsing web elements and infinite scrolling
-    ├── prompts.ts       # Predefined prompts for OpenAI
-    └── utils.ts         # Utility functions (e.g., wait time, console prompts)
+    ├── core/            # Core application logic
+    │   ├── application.ts # Application submission workflow
+    │   ├── jobSearch.ts # Job discovery and filtering
+    │   ├── login.ts     # Authentication handling
+    │   └── mainStages.ts # Main workflow orchestration
+    ├── utils/           # Utility modules
+    │   ├── aiUtils.ts   # OpenAI integration for generating messages and job comparison
+    │   ├── debugUtils.ts # Debugging utilities
+    │   ├── logger.ts    # Logging functionality
+    │   ├── parseUtils.ts # Functions for parsing web elements and infinite scrolling
+    │   ├── prompts.ts   # Loads and exports AI prompts from prompts.yaml
+    │   └── utils.ts     # Utility functions (e.g., wait time, console prompts)
+    ├── __tests__/       # Test files organized by module type
+    └── openAiClient.ts  # OpenAI client configuration
 ```
 
 ## Environment Variables
@@ -150,6 +160,8 @@ This project automates the process of applying to jobs on [WorkAtAStartup](https
 - [OpenAI](https://github.com/openai/openai-node): For generating application messages and job comparison.
 - [TypeScript](https://www.typescriptlang.org/): For type-safe development.
 - [Winston](https://github.com/winstonjs/winston): For structured logging.
+- [js-yaml](https://github.com/nodeca/js-yaml): For parsing YAML prompt files.
+- [Jest](https://jestjs.io/): For comprehensive testing framework.
 
 ## License
 
