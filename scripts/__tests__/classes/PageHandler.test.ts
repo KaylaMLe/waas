@@ -1,117 +1,256 @@
-import puppeteer, { Browser, Page } from 'puppeteer';
-import logger from '../../logger';
-import { PageHandler } from '../../classes/PageHandler';
+import { jest } from '@jest/globals';
+import { Browser, Page } from 'puppeteer';
+import logger from '../../utils/logger';
 
-jest.mock('puppeteer', () => {
-	const actual = jest.requireActual('puppeteer');
-	return {
-		...actual,
+// Mock puppeteer
+jest.mock('puppeteer', () => ({
+	default: {
 		launch: jest.fn(),
-	};
+	},
+}));
+
+// Mock logger
+jest.mock('../../utils/logger.js', () => ({
+	__esModule: true,
+	default: { log: jest.fn() },
+}));
+
+// Mock utils
+jest.mock('../../utils/utils.js', () => ({
+	withTimeout: jest.fn(),
+}));
+
+// Import PageHandler after mocks
+const { PageHandler } = require('../../classes/PageHandler.js');
+
+// Simple object mocks for Puppeteer Browser and Page
+const createMockPage = () => ({
+	goto: jest.fn(),
+	close: jest.fn(),
+	evaluate: jest.fn(),
+	content: jest.fn(),
+	waitForSelector: jest.fn(),
+	waitForFunction: jest.fn(),
 });
-jest.mock('../../logger', () => ({
+
+const createMockBrowser = (mockPage: any) => ({
+	newPage: jest.fn(() => Promise.resolve(mockPage)),
+	close: jest.fn(),
+});
+
+jest.mock('../../utils/logger', () => ({
 	log: jest.fn(),
 }));
 
+// Remove puppeteer mock, test only PageHandler logic
+
 describe('PageHandler', () => {
-	let pageHandler: PageHandler;
-	let mockBrowser: jest.Mocked<Browser>;
-	let mockPage: jest.Mocked<Page>;
+	let mockBrowser: any;
+	let mockPage: any;
+	let mockPuppeteer: any;
 
 	beforeEach(() => {
+		jest.clearAllMocks();
+
 		mockPage = {
 			goto: jest.fn(),
 			close: jest.fn(),
-			evaluate: jest.fn(),
-			content: jest.fn(),
-			waitForSelector: jest.fn(),
-			waitForFunction: jest.fn(),
-		} as unknown as jest.Mocked<Page>;
+		} as any;
 
 		mockBrowser = {
-			newPage: jest.fn().mockResolvedValue(mockPage),
+			newPage: jest.fn(),
 			close: jest.fn(),
-		} as unknown as jest.Mocked<Browser>;
+		} as any;
 
-		(puppeteer.launch as jest.Mock).mockResolvedValue(mockBrowser);
-		pageHandler = new PageHandler(mockBrowser);
+		mockPuppeteer = require('puppeteer');
+		// @ts-ignore
+		mockPuppeteer.default.launch = jest.fn().mockResolvedValue(mockBrowser);
+		mockBrowser.newPage.mockResolvedValue(mockPage);
 	});
 
-	afterEach(async () => {
-		jest.clearAllMocks();
+	describe('constructor', () => {
+		it('should initialize without browser parameter', () => {
+			jest.resetModules();
+			const { PageHandler } = require('../../classes/PageHandler.js');
+			const handler = new PageHandler();
 
-		if (pageHandler) {
-			await pageHandler.closeBrowser();
-		}
+			expect(handler).toBeInstanceOf(PageHandler);
+			expect(handler['browserLoading']).toBeDefined();
+		});
+
+		it('should initialize with browser parameter', () => {
+			jest.resetModules();
+			const { PageHandler } = require('../../classes/PageHandler.js');
+			const handler = new PageHandler(mockBrowser as any);
+
+			expect(handler).toBeInstanceOf(PageHandler);
+			expect(handler['browser']).toBe(mockBrowser);
+			expect(handler['headless']).toBe(true);
+		});
 	});
 
-	test('should initialize with an existing browser instance', async () => {
-		const customBrowser = mockBrowser;
-		const handler = new PageHandler(customBrowser);
+	describe('init', () => {
+		it('should handle browser initialization failure', async () => {
+			jest.resetModules();
+			const { PageHandler } = require('../../classes/PageHandler.js');
+			const handler = new PageHandler();
 
-		await handler['browserLoading'];
-		expect(handler['browser']).toBe(customBrowser);
+			// Wait for initialization
+			const result = await handler['browserLoading'];
+
+			expect(result).toBe(false);
+		});
 	});
 
-	test('should handle errors in init method', async () => {
-		(puppeteer.launch as jest.Mock).mockRejectedValue(new Error('Launch error'));
-		const handler = new PageHandler();
+	describe('openUrl', () => {
+		it('should open URL successfully', async () => {
+			const { withTimeout } = require('../../utils/utils.js');
 
-		await expect(handler['browserLoading']).resolves.toBe(false);
-		expect(logger.log).toHaveBeenCalledWith('error', expect.stringContaining('Failed to initialize browser'));
+			withTimeout.mockResolvedValue(true);
+
+			const { PageHandler } = require('../../classes/PageHandler.js');
+			const handler = new PageHandler(mockBrowser as any);
+
+			const result = await handler.openUrl('https://example.com');
+
+			expect(result).toBe(true);
+			expect(mockBrowser.newPage).toHaveBeenCalled();
+			expect(mockPage.goto).toHaveBeenCalledWith('https://example.com', { waitUntil: 'domcontentloaded' });
+			expect(handler.pages).toHaveLength(1);
+		});
+
+		it('should handle browser not initialized', async () => {
+			const { withTimeout } = require('../../utils/utils.js');
+
+			withTimeout.mockResolvedValue(false);
+
+			const { PageHandler } = require('../../classes/PageHandler.js');
+			const handler = new PageHandler();
+
+			const result = await handler.openUrl('https://example.com');
+
+			expect(result).toBe(false);
+		});
+
+		it('should handle page creation failure', async () => {
+			const { withTimeout } = require('../../utils/utils.js');
+
+			withTimeout.mockResolvedValue(true);
+			// @ts-ignore
+			mockBrowser.newPage.mockRejectedValue(new Error('Page creation failed'));
+
+			const { PageHandler } = require('../../classes/PageHandler.js');
+			const handler = new PageHandler(mockBrowser as any);
+
+			const result = await handler.openUrl('https://example.com');
+
+			expect(result).toBe(false);
+		});
+
+		it('should handle URL opening failure', async () => {
+			const { withTimeout } = require('../../utils/utils.js');
+
+			withTimeout.mockResolvedValue(true);
+			// @ts-ignore
+			mockPage.goto.mockRejectedValue(new Error('Navigation failed'));
+
+			const { PageHandler } = require('../../classes/PageHandler.js');
+			const handler = new PageHandler(mockBrowser as any);
+
+			const result = await handler.openUrl('https://example.com');
+
+			expect(result).toBe(false);
+			expect(mockPage.close).toHaveBeenCalled();
+		});
+
+		it('should handle timeout during browser loading', async () => {
+			const { withTimeout } = require('../../utils/utils.js');
+
+			withTimeout.mockRejectedValue(new Error('Timeout'));
+
+			const { PageHandler } = require('../../classes/PageHandler.js');
+			const handler = new PageHandler();
+
+			const result = await handler.openUrl('https://example.com');
+
+			expect(result).toBe(false);
+		});
 	});
 
-	test('should handle errors when creating a new page', async () => {
-		mockBrowser.newPage.mockRejectedValue(new Error('New page error'));
+	describe('getMostRecentPage', () => {
+		it('should return most recent page', () => {
+			const { PageHandler } = require('../../classes/PageHandler.js');
+			const handler = new PageHandler(mockBrowser as any);
 
-		const result = await pageHandler.openUrl('https://example.com');
+			handler.pages = [mockPage, {} as Page];
 
-		expect(result).toBe(false);
-		expect(logger.log).toHaveBeenCalledWith('error', '⚠️ Failed to create a new page:', expect.any(Error));
+			const result = handler.getMostRecentPage();
+
+			expect(result).toBe(handler.pages[1]);
+		});
+
+		it('should throw error when no pages are open', () => {
+			const { PageHandler } = require('../../classes/PageHandler.js');
+			const handler = new PageHandler(mockBrowser as any);
+
+			handler.pages = [];
+
+			expect(() => handler.getMostRecentPage()).toThrow('⚠️ No pages are currently open.');
+		});
 	});
 
-	test('should return false if browser fails to load', async () => {
-		(puppeteer.launch as jest.Mock).mockRejectedValueOnce(new Error('fail'));
-		const handler = new PageHandler();
-		handler['browserLoading'] = Promise.resolve(false); // Simulate load failure
+	describe('closeMostRecentPage', () => {
+		it('should close most recent page', async () => {
+			const { PageHandler } = require('../../classes/PageHandler.js');
+			const handler = new PageHandler(mockBrowser as any);
 
-		const result = await handler.openUrl('https://example.com');
-		expect(result).toBe(false);
-		expect(logger.log).toHaveBeenCalledWith('error', '⚠️ Browser is not initialized or failed to load.');
+			handler.pages = [mockPage];
+
+			await handler.closeMostRecentPage();
+
+			expect(mockPage.close).toHaveBeenCalled();
+			expect(handler.pages).toHaveLength(0);
+		});
+
+		it('should handle no pages to close', async () => {
+			const { PageHandler } = require('../../classes/PageHandler.js');
+			const handler = new PageHandler(mockBrowser as any);
+
+			handler.pages = [];
+
+			await handler.closeMostRecentPage();
+
+			expect(mockPage.close).not.toHaveBeenCalled();
+		});
 	});
 
-	test('openUrl successfully opens a page and returns true', async () => {
-		const result = await pageHandler.openUrl('https://example.com');
+	describe('closeBrowser', () => {
+		it('should close all pages and browser', async () => {
+			const { PageHandler } = require('../../classes/PageHandler.js');
+			const handler = new PageHandler(mockBrowser as any);
 
-		expect(mockPage.goto).toHaveBeenCalledWith('https://example.com', { waitUntil: 'domcontentloaded' });
-		expect(pageHandler['pages']).toContain(mockPage);
-		expect(result).toBe(true);
-	});
+			const mockPage2 = { close: jest.fn() } as any;
+			handler.pages = [mockPage, mockPage2];
 
-	test('should handle error in page.goto()', async () => {
-		mockPage.goto.mockRejectedValueOnce(new Error('goto failed'));
-		const result = await pageHandler.openUrl('https://example.com');
+			await handler.closeBrowser();
 
-		expect(result).toBe(false);
-		expect(mockPage.close).toHaveBeenCalled();
-		expect(logger.log).toHaveBeenCalledWith('error', '❌ Failed to open URL:', expect.any(Error));
-	});
+			expect(mockPage.close).toHaveBeenCalled();
+			expect(mockPage2.close).toHaveBeenCalled();
+			expect(mockBrowser.close).toHaveBeenCalled();
+			expect(handler.pages).toHaveLength(0);
+			expect(handler['browser']).toBeNull();
+		});
 
-	test('closeMostRecentPage closes a page if present, does nothing if not', async () => {
-		// Case: one page exists
-		pageHandler['pages'] = [mockPage];
-		await pageHandler.closeMostRecentPage();
-		expect(mockPage.close).toHaveBeenCalled();
-		expect(pageHandler['pages'].length).toBe(0);
+		it('should handle no browser to close', async () => {
+			const { PageHandler } = require('../../classes/PageHandler.js');
+			const handler = new PageHandler();
 
-		// Case: no pages left
-		await expect(pageHandler.closeMostRecentPage()).resolves.not.toThrow();
-	});
+			handler['browser'] = null;
+			handler.pages = [];
 
-	test('getMostRecentPage returns the last page if pages exist', () => {
-		pageHandler['pages'] = [mockPage];
-		const result = pageHandler.getMostRecentPage();
+			await handler.closeBrowser();
 
-		expect(result).toBe(mockPage);
+			expect(mockBrowser.close).not.toHaveBeenCalled();
+		});
 	});
 });

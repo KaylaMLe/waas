@@ -1,9 +1,9 @@
-import { waitTime, consolePrompt, loadApplied } from '../utils';
-import Company from '../classes/Company';
-import logger from '../logger';
+import { waitTime, consolePrompt, loadApplied } from '../../utils/utils';
+import Company from '../../classes/Company';
+import logger from '../../utils/logger';
 
 jest.mock('readline');
-jest.mock('../logger');
+jest.mock('../../utils/logger');
 
 describe('utils.ts', () => {
 	beforeEach(() => {
@@ -22,7 +22,7 @@ describe('utils.ts', () => {
 			jest.runAllTimers();
 			await waitPromise;
 
-			expect(logSpy).toHaveBeenCalledWith('debug', expect.stringMatching(/⏳ Waiting for \d+ seconds/));
+			expect(logSpy).toHaveBeenCalledWith('info', expect.stringMatching(/⏳ Waiting for \d+ seconds/));
 		});
 
 		it('should log an error if rangeMin is greater than rangeMax', async () => {

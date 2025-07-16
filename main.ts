@@ -1,13 +1,33 @@
-import { checkAppMethod, compareJobs } from './scripts/aiUtils.js';
-import logger from './scripts/logger.js';
-import { loggingIn, searchForJobs, handleMessageApprovalAndApplication } from './scripts/mainStages.js';
-import { checkJobApplicationStatus } from './scripts/parseUtils.js';
-import { waitTime } from './scripts/utils.js';
+import { checkAppMethod, compareJobs } from './scripts/utils/aiUtils.js';
+import logger from './scripts/utils/logger.js';
+import { loggingIn, searchForJobs, handleMessageApprovalAndApplication } from './scripts/core/mainStages.js';
+import { checkJobApplicationStatus } from './scripts/utils/parseUtils.js';
+import { waitTime } from './scripts/utils/utils.js';
 import Company from './scripts/classes/Company.js';
 import Job from './scripts/classes/Job.js';
 import { PageHandler } from './scripts/classes/PageHandler.js';
 
 const pageHandler = new PageHandler();
+
+let isShuttingDown = false;
+
+async function gracefulShutdown(signal = 'SIGINT') {
+	if (isShuttingDown) return;
+	isShuttingDown = true;
+	logger.log('info', `🟡 Received ${signal}. Shutting down gracefully...`);
+
+	try {
+		await pageHandler.closeBrowser();
+		logger.log('info', '🔵 Browser closed. Exiting.');
+	} catch (err) {
+		logger.log('error', '❌ Error during shutdown:', err);
+	} finally {
+		process.exit(0);
+	}
+}
+
+process.on('SIGINT', () => gracefulShutdown('SIGINT'));
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
 
 async function main(): Promise<void> {
 	logger.log('info', '🔵 Logging in...');
@@ -157,6 +177,6 @@ try {
 	logger.log('error', '⚠️ Unexpected error:', error);
 } finally {
 	// close the browser and all pages
-	logger.log('debug', '🔵 Closing the browser...');
+	logger.log('info', '🔵 Closing the browser...');
 	await pageHandler.closeBrowser();
 }
