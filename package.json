@@ -7,7 +7,9 @@
 		"test": "jest --coverage"
 	},
 	"dependencies": {
+		"@types/js-yaml": "^4.0.9",
 		"@types/puppeteer": "^5.4.7",
+		"js-yaml": "^4.1.0",
 		"openai": "^4.86.1",
 		"puppeteer": "^24.2.1",
 		"ts-node": "^10.9.2",

@@ -1,6 +1,7 @@
+dist/
+coverage/
 node_modules
 .env
 *.html
 *.log
-dist/
-coverage/
+*.yaml
