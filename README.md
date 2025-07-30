@@ -35,7 +35,9 @@ This project automates the process of applying to jobs on [WorkAtAStartup](https
    npm install
    ```
 
-3. Create a `.env` file in the root directory and configure it with your environment variables:
+3. **Configure environment variables**:
+
+   Create a `.env` file in the root directory and add your configuration:
 
    ```env
    SEARCH_URL="https://www.workatastartup.com/companies?..."
@@ -49,11 +51,15 @@ This project automates the process of applying to jobs on [WorkAtAStartup](https
    APP_MESSAGE_MODEL="gpt-4o-mini"
    ```
 
-4. **Create AI Prompts File**:
+4. **Set up your OpenAI API key**:
+
+   See the [OpenAI API Key Setup](#openai-api-key-setup) section below for detailed instructions on configuring your API key.
+
+5. **Create the AI Prompts File**:
 
    Create a `prompts.yaml` file in the project root with your AI system prompts. See the [AI Prompts](#ai-prompts) section below for details and examples.
 
-5. Build the TypeScript files:
+6. Build the TypeScript files:
    ```bash
    npm run build
    ```
@@ -148,38 +154,64 @@ This project automates the process of applying to jobs on [WorkAtAStartup](https
 
 ## Environment Variables
 
+### Required Variables
+
 - `RESUME_PATH`: The absolute path to a PDF of your resume.
-- `SEARCH_URL` [optional]: The URL of a WorkAtAStartup search page.
+
+### Optional Variables
+
+- `SEARCH_URL`: The URL of a WorkAtAStartup search page.
   - Opening up [the default search page](https://www.workatastartup.com/companies) and modifying the search criteria will modify the URL parameters. Copying and pasting the new URL into this environment variable will restrict the search to jobs that match these criteria.
-- `APPLIED` [optional]: A comma-separated list of companies you've already applied to.
+- `APPLIED`: A comma-separated list of companies you've already applied to.
   - Each item should include both the company's name and batch indicator. (e.g., "Airbnb (W09)" instead of "Airbnb")
-- `SCROLL_COUNT` [optional]: Number of times to scroll down to load more job listings.
+- `SCROLL_COUNT`: Number of times to scroll down to load more job listings.
   - Set to "inf" for infinite scrolling until no more results are available.
   - Default is "0" (no scrolling).
+- `LOG_LEVEL`: Logging level for the application.
+  - Options: `error`, `warn`, `info`, `debug`, `dump`
+  - Default is `info`
 
-### AI Model Configuration [optional]
+### AI Model Configuration
 
-You can configure different OpenAI models for each type of prompt by setting these environment variables:
+You can configure different OpenAI models for each type of prompt. All default to `gpt-4o-mini`:
 
-- `APP_METHOD_MODEL` [optional]: The OpenAI model to use for analyzing job descriptions to detect application methods.
-  - Default: `gpt-4o-mini`
-  - Example: `gpt-4`, `gpt-4-turbo`, `gpt-3.5-turbo`
-- `JOB_COMPARE_MODEL` [optional]: The OpenAI model to use for comparing multiple jobs to find the best fit.
-  - Default: `gpt-4o-mini`
-  - Example: `gpt-4`, `gpt-4-turbo`, `gpt-3.5-turbo`
-- `APP_MESSAGE_MODEL` [optional]: The OpenAI model to use for generating application messages.
-  - Default: `gpt-4o-mini`
-  - Example: `gpt-4`, `gpt-4-turbo`, `gpt-3.5-turbo`
+- `APP_METHOD_MODEL`: Model for analyzing job descriptions to detect application methods
+- `JOB_COMPARE_MODEL`: Model for comparing multiple jobs to find the best fit
+- `APP_MESSAGE_MODEL`: Model for generating application messages
 
-Example configuration:
+## OpenAI API Key Setup
+
+The script requires an OpenAI API key to generate application messages and analyze job descriptions. Here's how to set it up:
+
+### Getting an OpenAI API Key
+
+If you don't have an OpenAI API key:
+
+1. Visit [OpenAI's API platform](https://platform.openai.com/api-keys)
+2. Sign up or log in to your OpenAI account
+3. Click "Create new secret key"
+4. Copy the generated key
+
+### Setting Up Your API Key
+
+You can set up your API key in one of two ways:
+
+**Option A: Using a .env file (Recommended)**
+
+Add your API key to your `.env` file:
 
 ```env
-APP_METHOD_MODEL="gpt-3.5-turbo"
-JOB_COMPARE_MODEL="gpt-4"
-APP_MESSAGE_MODEL="gpt-4-turbo"
+OPENAI_API_KEY="your_openai_api_key_here"
 ```
 
-⚠️ Note: Login credentials (`YCUSER` and `YCPSWD`) are no longer required as the login process is now manual.
+**Option B: Using system environment variables**
+
+Set the API key as a system environment variable:
+
+- **Windows**: `set OPENAI_API_KEY=your_openai_api_key_here`
+- **Linux/Mac**: `export OPENAI_API_KEY=your_openai_api_key_here`
+
+⚠️ **Security Note**: Never commit your API key to version control. The `.env` file is already included in `.gitignore` to prevent accidental commits.
 
 ## AI Prompts
 
