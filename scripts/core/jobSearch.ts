@@ -36,35 +36,50 @@ export async function searchForJobs(pageHandler: PageHandler): Promise<Record<st
 		while (scrollsCompleted < maxScrolls) {
 			// Check if loading indicator is present
 			const loadingPresent = await page.evaluate(() => {
-				return !!document.querySelector('div.loading.center');
+				return !!document.querySelector('div.loading');
 			});
 
 			if (!loadingPresent) {
 				// No more results to load, break early
-				logger.log('debug', `🔵 No more results after ${scrollsCompleted} scrolls.`);
+				logger.log('debug', `✅ Loading indicator not found after ${scrollsCompleted} scrolls.`);
 				break;
 			}
 
-			// Get current scroll height before scrolling
-			const scrollHeightBefore = await page.evaluate(() => document.body.scrollHeight);
+			// Capture page height, then scroll so the sentinel loader can trigger fetch (same
+			// selectors as loading check — avoid div.loading.center-only, which often matches nothing).
+			const scrollHeightBefore = await page.evaluate(() => {
+				const pageScrollHeight = () =>
+					Math.max(
+						document.body?.scrollHeight ?? 0,
+						document.documentElement?.scrollHeight ?? 0
+					);
 
-			// Scroll until the loading indicator is visible
-			await page.evaluate(() => {
-				const loadingElement = document.querySelector('div.loading.center');
-				if (loadingElement) {
-					// Get the position of the loading indicator
-					const rect = loadingElement.getBoundingClientRect();
-					// If it's not visible (below the viewport), scroll to it
-					if (rect.top > window.innerHeight) {
-						window.scrollBy(0, rect.top - window.innerHeight + 100); // +100 for buffer
-					}
+				const before = pageScrollHeight();
+
+				const loading =
+					(document.querySelector('div.directory-list div.loading') as HTMLElement | null) ??
+					(document.querySelector('div.loading') as HTMLElement | null);
+
+				if (loading) {
+					loading.scrollIntoView({ block: 'end', inline: 'nearest' });
 				}
+
+				const maxTop = Math.max(0, pageScrollHeight() - window.innerHeight);
+				window.scrollTo({ top: maxTop, left: 0, behavior: 'auto' });
+
+				return before;
 			});
 
 			// Wait for scroll height to increase (meaning new content loaded)
 			const heightIncreased = await page
 				.waitForFunction(
-					(previousHeight) => document.body.scrollHeight > previousHeight,
+					(previousHeight) => {
+						const h = Math.max(
+							document.body?.scrollHeight ?? 0,
+							document.documentElement?.scrollHeight ?? 0
+						);
+						return h > previousHeight;
+					},
 					{ timeout: 10000 },
 					scrollHeightBefore
 				)
@@ -73,7 +88,7 @@ export async function searchForJobs(pageHandler: PageHandler): Promise<Record<st
 
 			if (!heightIncreased) {
 				// No new content loaded, we're at the end
-				logger.log('debug', `🔵 No new content loaded after ${scrollsCompleted + 1} scrolls.`);
+				logger.log('debug', `⚠️ No new content loaded (page height did not increase) after ${scrollsCompleted} scrolls. Did scrolling actually take place?`);
 				break;
 			}
 
