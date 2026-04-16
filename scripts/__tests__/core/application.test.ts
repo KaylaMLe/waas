@@ -19,7 +19,7 @@ jest.mock('../../utils/utils', () => ({
 
 jest.mock('../../utils/parseUtils', () => ({
 	findBtnByTxt: jest.fn(),
-	findDivByIdPrefix: jest.fn(),
+	findApplyLink: jest.fn(),
 	waitForJobPageContent: jest.fn().mockImplementation(() => Promise.resolve()),
 }));
 
@@ -70,6 +70,8 @@ describe('application', () => {
 		mockPage = {
 			waitForSelector: jest.fn(),
 			$: jest.fn(),
+			$$: jest.fn(),
+			evaluate: jest.fn(),
 			waitForFunction: jest.fn(),
 		};
 		mockPageHandler = {
@@ -96,7 +98,7 @@ describe('application', () => {
 			(utils.consolePrompt as any).mockResolvedValue('Y');
 			mockPageHandler.openUrl.mockResolvedValueOnce(true);
 			(utils.waitTime as any).mockResolvedValue(undefined);
-			(parseUtils.findDivByIdPrefix as any).mockResolvedValue(null);
+			(parseUtils.findApplyLink as any).mockResolvedValue(null);
 
 			const result = await handleMessageApprovalAndApplication(mockPageHandler, 'Test Company', mockJob);
 
@@ -108,7 +110,7 @@ describe('application', () => {
 			(utils.consolePrompt as any).mockResolvedValue('Y');
 			mockPageHandler.openUrl.mockResolvedValueOnce(true);
 			(utils.waitTime as any).mockResolvedValue(undefined);
-			(parseUtils.findDivByIdPrefix as any).mockResolvedValue(mockApplyBtn);
+			(parseUtils.findApplyLink as any).mockResolvedValue(mockApplyBtn);
 			mockPage.waitForSelector.mockResolvedValue(undefined);
 			mockPage.$.mockResolvedValue(null);
 
@@ -122,7 +124,7 @@ describe('application', () => {
 			(utils.consolePrompt as any).mockResolvedValue('Y');
 			mockPageHandler.openUrl.mockResolvedValueOnce(true);
 			(utils.waitTime as any).mockResolvedValue(undefined);
-			(parseUtils.findDivByIdPrefix as any).mockResolvedValue(mockApplyBtn);
+			(parseUtils.findApplyLink as any).mockResolvedValue(mockApplyBtn);
 			mockPage.waitForSelector.mockResolvedValue(undefined);
 			mockPage.$.mockResolvedValue(mockTextArea);
 			(parseUtils.findBtnByTxt as any).mockResolvedValue(null);
@@ -137,7 +139,7 @@ describe('application', () => {
 			(utils.consolePrompt as any).mockResolvedValue('Y');
 			mockPageHandler.openUrl.mockResolvedValueOnce(true);
 			(utils.waitTime as any).mockResolvedValue(undefined);
-			(parseUtils.findDivByIdPrefix as any).mockResolvedValue(mockApplyBtn);
+			(parseUtils.findApplyLink as any).mockResolvedValue(mockApplyBtn);
 			mockPage.waitForSelector.mockResolvedValue(undefined);
 			mockPage.$.mockResolvedValue(mockTextArea);
 			(parseUtils.findBtnByTxt as any).mockResolvedValue({}); // No click function
@@ -152,7 +154,7 @@ describe('application', () => {
 			(utils.consolePrompt as any).mockResolvedValue('Y');
 			mockPageHandler.openUrl.mockResolvedValueOnce(true);
 			(utils.waitTime as any).mockResolvedValue(undefined);
-			(parseUtils.findDivByIdPrefix as any).mockResolvedValue(mockApplyBtn);
+			(parseUtils.findApplyLink as any).mockResolvedValue(mockApplyBtn);
 			mockPage.waitForSelector.mockRejectedValue(new TimeoutError('Timeout'));
 
 			const result = await handleMessageApprovalAndApplication(mockPageHandler, 'Test Company', mockJob);
@@ -165,7 +167,7 @@ describe('application', () => {
 			(utils.consolePrompt as any).mockResolvedValue('Y');
 			mockPageHandler.openUrl.mockResolvedValueOnce(true);
 			(utils.waitTime as any).mockResolvedValue(undefined);
-			(parseUtils.findDivByIdPrefix as any).mockResolvedValue(mockApplyBtn);
+			(parseUtils.findApplyLink as any).mockResolvedValue(mockApplyBtn);
 			mockPage.waitForSelector.mockResolvedValue(undefined);
 			mockPage.$.mockResolvedValue(mockTextArea);
 			(parseUtils.findBtnByTxt as any).mockResolvedValue(mockSendBtn);
@@ -190,7 +192,7 @@ describe('application', () => {
 			(utils.consolePrompt as any).mockResolvedValue('Y');
 			mockPageHandler.openUrl.mockResolvedValueOnce(true);
 			(utils.waitTime as any).mockResolvedValue(undefined);
-			(parseUtils.findDivByIdPrefix as any).mockResolvedValue(mockApplyBtn);
+			(parseUtils.findApplyLink as any).mockResolvedValue(mockApplyBtn);
 			mockPage.waitForSelector.mockResolvedValue(undefined);
 			mockPage.$.mockResolvedValue(mockTextArea);
 			(parseUtils.findBtnByTxt as any).mockResolvedValue(mockSendBtn);
@@ -213,7 +215,7 @@ describe('application', () => {
 				.mockResolvedValueOnce('Y'); // User approves new message
 			mockPageHandler.openUrl.mockResolvedValueOnce(true);
 			(utils.waitTime as any).mockResolvedValue(undefined);
-			(parseUtils.findDivByIdPrefix as any).mockResolvedValue(mockApplyBtn);
+			(parseUtils.findApplyLink as any).mockResolvedValue(mockApplyBtn);
 			mockPage.waitForSelector.mockResolvedValue(undefined);
 			mockPage.$.mockResolvedValue(mockTextArea);
 			(parseUtils.findBtnByTxt as any).mockResolvedValue(mockSendBtn);

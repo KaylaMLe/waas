@@ -1,7 +1,7 @@
 import logger from '../utils/logger.js';
 import { consolePrompt, waitTime } from '../utils/utils.js';
 import { PageHandler } from '../classes/PageHandler.js';
-import { findBtnByTxt, findDivByIdPrefix, waitForJobPageContent } from '../utils/parseUtils.js';
+import { findApplyLink, findBtnByTxt, waitForJobPageContent } from '../utils/parseUtils.js';
 import { writeAppMsg } from '../utils/aiUtils.js';
 import { TimeoutError } from 'puppeteer';
 import Job from '../classes/Job.js';
@@ -58,15 +58,15 @@ export async function handleMessageApprovalAndApplication(
 
 	await waitForJobPageContent(pageHandler.getMostRecentPage());
 	await waitTime(10, 20);
-	const applyBtn = await findDivByIdPrefix(pageHandler.getMostRecentPage(), 'ApplyButton');
+	const applyLink = await findApplyLink(pageHandler.getMostRecentPage());
 
-	if (!applyBtn) {
+	if (!applyLink) {
 		logger.log('error', '⚠️ Skipping this job application.');
 		return false;
 	}
 
-	await applyBtn.click();
-	logger.log('debug', '✅ Clicked the apply button.');
+	await applyLink.click();
+	logger.log('debug', '✅ Clicked the apply link.');
 
 	// wait up to three seconds for a textarea element to appear in the dom
 	try {
@@ -106,7 +106,7 @@ export async function handleMessageApprovalAndApplication(
 	try {
 		await pageHandler
 			.getMostRecentPage()
-			.waitForFunction((btn) => btn.innerText === 'Applied', { timeout: 5000 }, applyBtn);
+			.waitForFunction((btn) => btn.innerText === 'Applied', { timeout: 5000 }, applyLink);
 	} catch (error) {
 		if (error instanceof TimeoutError) {
 			logger.log('error', '⚠️ TimeoutError: The post-application page did not load within 5 seconds.');

@@ -3,30 +3,6 @@ import { ElementHandle, Page } from 'puppeteer';
 import logger from './logger.js';
 
 /**
- * Parses all the divs in the page for a div with an ID beginning with the input string.
- *
- * @param page - The Puppeteer page object to search within.
- * @param idPrefix - The prefix of the ID to search for.
- * @returns A promise that resolves to the div if found, or null if not found.
- */
-export async function findDivByIdPrefix(page: Page, idPrefix: string): Promise<ElementHandle<HTMLDivElement> | null> {
-	try {
-		const divElement = await page.$(`div[id^='${idPrefix}']`);
-
-		if (divElement) {
-			logger.log('debug', `✅ Found div element with ID starting with: '${idPrefix}'\n`);
-			return divElement;
-		} else {
-			logger.log('warn', `❌ No div element found with ID starting with: '${idPrefix}'\n`);
-			return null;
-		}
-	} catch (error) {
-		logger.log('error', `⚠️ Unexpected error: ${error}`);
-		return null;
-	}
-}
-
-/**
  * Finds a button element by its text content, supporting both Puppeteer pages and test environments.
  *
  * @param page - The Puppeteer page object or test environment context to search within.
@@ -51,6 +27,31 @@ export async function findBtnByTxt(page: any, innerText: string): Promise<any | 
 		return btn || null;
 	} catch (error) {
 		logger.log('error', `⚠️ Error: ${error}`);
+		return null;
+	}
+}
+
+/** Exact text on the WAAS job-page apply CTA (`<a>Apply</a>`); after applying it becomes `Applied`. */
+const JOB_APPLY_ANCHOR_TEXT = 'Apply' as const;
+const JOB_APPLIED_ANCHOR_TEXT = 'Applied' as const;
+
+/**
+ * Finds the primary job apply link: an anchor whose visible text is exactly "Apply".
+ */
+export async function findApplyLink(page: Page): Promise<ElementHandle<HTMLAnchorElement> | null> {
+	try {
+		const anchors = await page.$$('a');
+		for (const el of anchors) {
+			const text = await page.evaluate((node: Element) => node.textContent?.trim() ?? '', el);
+			if (text === JOB_APPLY_ANCHOR_TEXT) {
+				logger.log('debug', `✅ Found apply anchor with text "${JOB_APPLY_ANCHOR_TEXT}"\n`);
+				return el as ElementHandle<HTMLAnchorElement>;
+			}
+		}
+		logger.log('warn', `❌ No anchor found with exact text "${JOB_APPLY_ANCHOR_TEXT}"\n`);
+		return null;
+	} catch (error) {
+		logger.log('error', `⚠️ Unexpected error: ${error}`);
 		return null;
 	}
 }
@@ -162,23 +163,28 @@ export async function filterJobLinks(page: Page): Promise<Record<string, string[
 export async function waitForJobPageContent(page: Page): Promise<void> {
 	try {
 		await page.waitForFunction(
-			() => {
+			(applyLabel: string, appliedLabel: string) => {
 				const textLen = document.body?.innerText?.trim().length ?? 0;
-				const hasApply = !!document.querySelector("div[id^='ApplyButton']");
-				return hasApply && textLen > 200;
+				const hasApplyCta = Array.from(document.querySelectorAll('a')).some((a) => {
+					const t = a.textContent?.trim();
+					return t === applyLabel || t === appliedLabel;
+				});
+				return hasApplyCta && textLen > 200;
 			},
-			{ timeout: 45_000, polling: 250 }
+			{ timeout: 45_000, polling: 250 },
+			JOB_APPLY_ANCHOR_TEXT,
+			JOB_APPLIED_ANCHOR_TEXT
 		);
 	} catch {
 		logger.log(
 			'warn',
-			"⚠️ Job page did not show apply UI and enough body text within 45s — innerText may still be empty or incomplete."
+			"⚠️ Job page did not show apply link and enough body text within 45s — innerText may still be empty or incomplete."
 		);
 	}
 }
 
 /**
- * Checks if a job has been applied to by examining the ApplyButton div and its anchor text.
+ * Checks if a job has been applied to by examining the apply `<a>` (exact text `Applied`).
  * Supports both Puppeteer pages and test environments.
  *
  * @param page - The Puppeteer page object or test environment context containing the job
@@ -186,43 +192,28 @@ export async function waitForJobPageContent(page: Page): Promise<void> {
  */
 export async function checkJobApplicationStatus(page: any): Promise<boolean> {
 	try {
-		// If running in a test environment, use DOM directly
-		if (typeof page.$ === 'function') {
-			const applyDiv = await page.$("div[id^='ApplyButton']");
-			if (!applyDiv) {
-				logger.log('debug', '❌ No div found with ID starting with ApplyButton');
-				return false;
-			}
-			logger.log('debug', '✅ Found div with ID starting with ApplyButton');
-
-			// Find anchor inside the div
-			const anchor = await page.evaluateHandle((div: any) => div.querySelector('a'), applyDiv);
-			if (!anchor) {
-				logger.log('debug', '❌ No anchor tag found inside ApplyButton div');
-				return false;
-			}
-			logger.log('debug', '✅ Found anchor tag inside ApplyButton div');
-
-			const text = await page.evaluate((a: any) => a.textContent, anchor);
-			logger.log('debug', `🔵 Anchor text content: '${text}'`);
-			return !!(text && text.trim() === 'Applied');
+		if (typeof page.evaluate === 'function') {
+			const applied = await page.evaluate(
+				(applyLabel: string, appliedLabel: string) => {
+					const cta = Array.from(document.querySelectorAll('a')).find((a) => {
+						const t = a.textContent?.trim();
+						return t === applyLabel || t === appliedLabel;
+					});
+					return cta?.textContent?.trim() === appliedLabel;
+				},
+				JOB_APPLY_ANCHOR_TEXT,
+				JOB_APPLIED_ANCHOR_TEXT
+			);
+			logger.log('debug', `🔵 Job apply CTA indicates already applied: ${applied}`);
+			return !!applied;
 		}
-		// Fallback for test: use document.querySelector
-		const applyDiv = document.querySelector("div[id^='ApplyButton']");
-		if (!applyDiv) {
-			logger.log('debug', '❌ No div found with ID starting with ApplyButton (test env)');
-			return false;
-		}
-		logger.log('debug', '✅ Found div with ID starting with ApplyButton (test env)');
-		const anchor = applyDiv.querySelector('a');
-		if (!anchor) {
-			logger.log('debug', '❌ No anchor tag found inside ApplyButton div (test env)');
-			return false;
-		}
-		logger.log('debug', '✅ Found anchor tag inside ApplyButton div (test env)');
-		const text = anchor.textContent;
-		logger.log('debug', `🔵 Anchor text content (test env): '${text}'`);
-		return !!(text && text.trim() === 'Applied');
+		const cta = Array.from(document.querySelectorAll('a')).find((a) => {
+			const t = a.textContent?.trim();
+			return t === JOB_APPLY_ANCHOR_TEXT || t === JOB_APPLIED_ANCHOR_TEXT;
+		});
+		const applied = cta?.textContent?.trim() === JOB_APPLIED_ANCHOR_TEXT;
+		logger.log('debug', `🔵 Job apply CTA (test env) indicates already applied: ${applied}`);
+		return applied;
 	} catch (error) {
 		logger.log('error', `⚠️ Error checking job application status: ${error}`);
 		return false;
