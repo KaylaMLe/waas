@@ -1,7 +1,7 @@
 import logger from '../utils/logger.js';
 import { consolePrompt, waitTime } from '../utils/utils.js';
 import { PageHandler } from '../classes/PageHandler.js';
-import { findBtnByTxt, findDivByIdPrefix } from '../utils/parseUtils.js';
+import { findBtnByTxt, findDivByIdPrefix, waitForJobPageContent } from '../utils/parseUtils.js';
 import { writeAppMsg } from '../utils/aiUtils.js';
 import { TimeoutError } from 'puppeteer';
 import Job from '../classes/Job.js';
@@ -56,6 +56,7 @@ export async function handleMessageApprovalAndApplication(
 		return false;
 	}
 
+	await waitForJobPageContent(pageHandler.getMostRecentPage());
 	await waitTime(10, 20);
 	const applyBtn = await findDivByIdPrefix(pageHandler.getMostRecentPage(), 'ApplyButton');
 

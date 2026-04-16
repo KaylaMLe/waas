@@ -1,7 +1,7 @@
 import { checkAppMethod, compareJobs } from './scripts/utils/aiUtils.js';
 import logger from './scripts/utils/logger.js';
 import { loggingIn, searchForJobs, handleMessageApprovalAndApplication } from './scripts/core/mainStages.js';
-import { checkJobApplicationStatus } from './scripts/utils/parseUtils.js';
+import { checkJobApplicationStatus, waitForJobPageContent } from './scripts/utils/parseUtils.js';
 import { waitTime } from './scripts/utils/utils.js';
 import Company from './scripts/classes/Company.js';
 import Job from './scripts/classes/Job.js';
@@ -71,7 +71,9 @@ async function main(): Promise<void> {
 				continue;
 			}
 
-			const jobText = await pageHandler.getMostRecentPage().evaluate(() => document.body.innerText);
+			const jobPage = pageHandler.getMostRecentPage();
+			await waitForJobPageContent(jobPage);
+			const jobText = await jobPage.evaluate(() => document.body.innerText);
 			logger.log('dump', jobText);
 			const jobLines = jobText.split('\n');
 

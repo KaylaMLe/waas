@@ -20,6 +20,7 @@ jest.mock('../../utils/utils', () => ({
 jest.mock('../../utils/parseUtils', () => ({
 	findBtnByTxt: jest.fn(),
 	findDivByIdPrefix: jest.fn(),
+	waitForJobPageContent: jest.fn().mockImplementation(() => Promise.resolve()),
 }));
 
 jest.mock('../../utils/aiUtils', () => ({

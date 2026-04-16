@@ -156,6 +156,28 @@ export async function filterJobLinks(page: Page): Promise<Record<string, string[
 }
 
 /**
+ * Waits for a WorkAtAStartup job URL to hydrate after navigation. `openUrl` only waits for
+ * the load event; the app shell often renders job copy and the apply control later via JS.
+ */
+export async function waitForJobPageContent(page: Page): Promise<void> {
+	try {
+		await page.waitForFunction(
+			() => {
+				const textLen = document.body?.innerText?.trim().length ?? 0;
+				const hasApply = !!document.querySelector("div[id^='ApplyButton']");
+				return hasApply && textLen > 200;
+			},
+			{ timeout: 45_000, polling: 250 }
+		);
+	} catch {
+		logger.log(
+			'warn',
+			"⚠️ Job page did not show apply UI and enough body text within 45s — innerText may still be empty or incomplete."
+		);
+	}
+}
+
+/**
  * Checks if a job has been applied to by examining the ApplyButton div and its anchor text.
  * Supports both Puppeteer pages and test environments.
  *

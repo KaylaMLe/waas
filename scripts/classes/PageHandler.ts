@@ -50,7 +50,7 @@ export class PageHandler {
 
 		try {
 			logger.log('debug', `🔵 Opening ${url}...`);
-			await page.goto(url, { waitUntil: 'domcontentloaded' });
+			await page.goto(url, { waitUntil: 'load', timeout: 60_000 });
 			this.pages.push(page);
 			logger.log('debug', '✅ Page opened successfully.');
 			return true;
