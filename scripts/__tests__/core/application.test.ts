@@ -15,6 +15,7 @@ jest.mock('../../utils/logger', () => ({
 jest.mock('../../utils/utils', () => ({
 	consolePrompt: jest.fn(),
 	waitTime: jest.fn(),
+	sleepMs: jest.fn(() => Promise.resolve()),
 }));
 
 jest.mock('../../utils/parseUtils', () => ({
@@ -71,7 +72,7 @@ describe('application', () => {
 			waitForSelector: jest.fn(),
 			$: jest.fn(),
 			$$: jest.fn(),
-			evaluate: jest.fn(),
+			evaluate: jest.fn().mockImplementation(() => Promise.resolve('Live JD from page')),
 			waitForFunction: jest.fn(),
 		};
 		mockPageHandler = {
@@ -91,6 +92,8 @@ describe('application', () => {
 			const result = await handleMessageApprovalAndApplication(mockPageHandler, 'Test Company', mockJob);
 
 			expect(result).toBe(false);
+			expect(aiUtils.writeAppMsg).not.toHaveBeenCalled();
+			expect(mockPageHandler.closeMostRecentPage).not.toHaveBeenCalled();
 		});
 
 		it('should return false if apply button not found', async () => {
@@ -103,6 +106,8 @@ describe('application', () => {
 			const result = await handleMessageApprovalAndApplication(mockPageHandler, 'Test Company', mockJob);
 
 			expect(result).toBe(false);
+			expect(aiUtils.writeAppMsg).toHaveBeenCalledWith('Live JD from page');
+			expect(mockPageHandler.closeMostRecentPage).toHaveBeenCalledTimes(1);
 		});
 
 		it('should return false if textarea not found', async () => {
@@ -117,6 +122,7 @@ describe('application', () => {
 			const result = await handleMessageApprovalAndApplication(mockPageHandler, 'Test Company', mockJob);
 
 			expect(result).toBe(false);
+			expect(mockPageHandler.closeMostRecentPage).toHaveBeenCalledTimes(1);
 		});
 
 		it('should return false if send button not found', async () => {
@@ -132,6 +138,7 @@ describe('application', () => {
 			const result = await handleMessageApprovalAndApplication(mockPageHandler, 'Test Company', mockJob);
 
 			expect(result).toBe(false);
+			expect(mockPageHandler.closeMostRecentPage).toHaveBeenCalledTimes(1);
 		});
 
 		it('should return false if send button has no click function', async () => {
@@ -147,6 +154,7 @@ describe('application', () => {
 			const result = await handleMessageApprovalAndApplication(mockPageHandler, 'Test Company', mockJob);
 
 			expect(result).toBe(false);
+			expect(mockPageHandler.closeMostRecentPage).toHaveBeenCalledTimes(1);
 		});
 
 		it('should return false on timeout error during textarea wait', async () => {
@@ -160,6 +168,7 @@ describe('application', () => {
 			const result = await handleMessageApprovalAndApplication(mockPageHandler, 'Test Company', mockJob);
 
 			expect(result).toBe(false);
+			expect(mockPageHandler.closeMostRecentPage).toHaveBeenCalledTimes(1);
 		});
 
 		it('should return false on timeout error during applied wait', async () => {
@@ -176,15 +185,19 @@ describe('application', () => {
 			const result = await handleMessageApprovalAndApplication(mockPageHandler, 'Test Company', mockJob);
 
 			expect(result).toBe(false);
+			expect(mockPageHandler.closeMostRecentPage).toHaveBeenCalledTimes(1);
 		});
 
 		it('should return false when user skips application', async () => {
 			(aiUtils.writeAppMsg as any).mockResolvedValue('Test message');
 			(utils.consolePrompt as any).mockResolvedValue('S');
+			mockPageHandler.openUrl.mockResolvedValueOnce(true);
 
 			const result = await handleMessageApprovalAndApplication(mockPageHandler, 'Test Company', mockJob);
 
 			expect(result).toBe(false);
+			expect(aiUtils.writeAppMsg).toHaveBeenCalledWith('Live JD from page');
+			expect(mockPageHandler.closeMostRecentPage).toHaveBeenCalledTimes(1);
 		});
 
 		it('should return true on successful application', async () => {
@@ -201,10 +214,11 @@ describe('application', () => {
 			const result = await handleMessageApprovalAndApplication(mockPageHandler, 'Test Company', mockJob);
 
 			expect(result).toBe(true);
+			expect(aiUtils.writeAppMsg).toHaveBeenCalledWith('Live JD from page');
 			expect(mockApplyBtn.click).toHaveBeenCalled();
 			expect(mockTextArea.type).toHaveBeenCalledWith('Test message');
 			expect(mockSendBtn.click).toHaveBeenCalled();
-			expect(mockPageHandler.closeMostRecentPage).toHaveBeenCalled();
+			expect(mockPageHandler.closeMostRecentPage).toHaveBeenCalledTimes(1);
 		});
 
 		it('should handle user entering new message', async () => {

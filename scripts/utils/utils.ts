@@ -24,6 +24,16 @@ export async function waitTime(rangeMin: number = 20, rangeMax: number = 30): Pr
 }
 
 /**
+ * Waits for a fixed duration (no-op if ms is zero or negative).
+ *
+ * @param ms - Milliseconds to wait
+ */
+export async function sleepMs(ms: number): Promise<void> {
+	if (ms <= 0) return;
+	await new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/**
  * Prompts the user for input in the console and returns the trimmed response.
  *
  * @param prompt - The prompt to display to the user.
