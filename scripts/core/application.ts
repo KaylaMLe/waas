@@ -1,5 +1,5 @@
 import logger from '../utils/logger.js';
-import { consolePrompt, sleepMs, waitTime } from '../utils/utils.js';
+import { consolePrompt, waitMsOrSkipJob, waitTime } from '../utils/utils.js';
 import { PageHandler } from '../classes/PageHandler.js';
 import { findApplyLink, findBtnByTxt, waitForJobPageContent } from '../utils/parseUtils.js';
 import { writeAppMsg } from '../utils/aiUtils.js';
@@ -37,9 +37,14 @@ export async function handleMessageApprovalAndApplication(
 	if (remainingBeforeMessageMs > 0) {
 		logger.log(
 			'info',
-			`⏳ Waiting ${Math.ceil(remainingBeforeMessageMs / 1000)}s before generating the application message...\n`
+			`⏳ Waiting ${Math.ceil(remainingBeforeMessageMs / 1000)}s before generating the application message (press S to skip this job)...\n`
 		);
-		await sleepMs(remainingBeforeMessageMs);
+		const earlySkip = await waitMsOrSkipJob(remainingBeforeMessageMs);
+		if (earlySkip === 'skipped') {
+			logger.log('info', `⏭️ Skipping application to ${companyName}`);
+			await pageHandler.closeMostRecentPage();
+			return false;
+		}
 	}
 
 	const jdText = await jobPage.evaluate(() => document.body.innerText);
@@ -72,7 +77,6 @@ export async function handleMessageApprovalAndApplication(
 		}
 	}
 
-	await waitTime(10, 20);
 	const applyLink = await findApplyLink(pageHandler.getMostRecentPage());
 
 	if (!applyLink) {

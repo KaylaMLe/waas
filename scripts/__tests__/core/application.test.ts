@@ -15,7 +15,7 @@ jest.mock('../../utils/logger', () => ({
 jest.mock('../../utils/utils', () => ({
 	consolePrompt: jest.fn(),
 	waitTime: jest.fn(),
-	sleepMs: jest.fn(() => Promise.resolve()),
+	waitMsOrSkipJob: jest.fn(() => Promise.resolve('completed')),
 }));
 
 jest.mock('../../utils/parseUtils', () => ({
@@ -94,6 +94,19 @@ describe('application', () => {
 			expect(result).toBe(false);
 			expect(aiUtils.writeAppMsg).not.toHaveBeenCalled();
 			expect(mockPageHandler.closeMostRecentPage).not.toHaveBeenCalled();
+		});
+
+		it('should skip when user skips during pre-message wait', async () => {
+			(aiUtils.writeAppMsg as any).mockResolvedValue('Test message');
+			(utils.waitMsOrSkipJob as any).mockResolvedValueOnce('skipped');
+			mockPageHandler.openUrl.mockResolvedValueOnce(true);
+
+			const result = await handleMessageApprovalAndApplication(mockPageHandler, 'Test Company', mockJob);
+
+			expect(result).toBe(false);
+			expect(aiUtils.writeAppMsg).not.toHaveBeenCalled();
+			expect(utils.waitMsOrSkipJob).toHaveBeenCalled();
+			expect(mockPageHandler.closeMostRecentPage).toHaveBeenCalledTimes(1);
 		});
 
 		it('should return false if apply button not found', async () => {
