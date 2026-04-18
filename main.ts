@@ -1,7 +1,7 @@
 import { checkAppMethod, compareJobs } from './scripts/utils/aiUtils.js';
 import logger from './scripts/utils/logger.js';
 import { loggingIn, searchForJobs, handleMessageApprovalAndApplication } from './scripts/core/mainStages.js';
-import { checkJobApplicationStatus } from './scripts/utils/parseUtils.js';
+import { checkJobApplicationStatus, waitForJobPageContent } from './scripts/utils/parseUtils.js';
 import { waitTime } from './scripts/utils/utils.js';
 import Company from './scripts/classes/Company.js';
 import Job from './scripts/classes/Job.js';
@@ -10,6 +10,18 @@ import { PageHandler } from './scripts/classes/PageHandler.js';
 const pageHandler = new PageHandler();
 
 let isShuttingDown = false;
+
+/** Winston keeps the File transport open; flush and end so the process can exit after work completes. */
+function flushLogger(): Promise<void> {
+	return new Promise((resolve) => {
+		logger.end(() => resolve());
+	});
+}
+
+async function flushLoggerAndExit(code: number): Promise<never> {
+	await flushLogger();
+	process.exit(code);
+}
 
 async function gracefulShutdown(signal = 'SIGINT') {
 	if (isShuttingDown) return;
@@ -22,7 +34,7 @@ async function gracefulShutdown(signal = 'SIGINT') {
 	} catch (err) {
 		logger.log('error', '❌ Error during shutdown:', err);
 	} finally {
-		process.exit(0);
+		await flushLoggerAndExit(0);
 	}
 }
 
@@ -71,7 +83,9 @@ async function main(): Promise<void> {
 				continue;
 			}
 
-			const jobText = await pageHandler.getMostRecentPage().evaluate(() => document.body.innerText);
+			const jobPage = pageHandler.getMostRecentPage();
+			await waitForJobPageContent(jobPage);
+			const jobText = await jobPage.evaluate(() => document.body.innerText);
 			logger.log('dump', jobText);
 			const jobLines = jobText.split('\n');
 
@@ -146,7 +160,10 @@ async function main(): Promise<void> {
 						appliedCompanies.push(companyName);
 					}
 				} else {
-					// Store jobs with application methods other than "none" for later logging
+					logger.log(
+						'info',
+						`⏭️ Skipping application for "${bestJob.position}" at ${companyName} (application method is "${appMethod}").`
+					);
 					jobsWithOtherAppMethods.push(bestJob);
 				}
 			}
@@ -171,12 +188,16 @@ async function main(): Promise<void> {
 	logger.log('info', `✅ You have applied to the following companies:\n${appliedCompaniesStr}`);
 }
 
+let exitCode = 0;
 try {
 	await main();
 } catch (error) {
+	exitCode = 1;
 	logger.log('error', '⚠️ Unexpected error:', error);
 } finally {
 	// close the browser and all pages
 	logger.log('info', '🔵 Closing the browser...');
 	await pageHandler.closeBrowser();
+	await flushLogger();
 }
+process.exit(exitCode);

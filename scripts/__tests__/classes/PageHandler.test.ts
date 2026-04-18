@@ -115,7 +115,7 @@ describe('PageHandler', () => {
 
 			expect(result).toBe(true);
 			expect(mockBrowser.newPage).toHaveBeenCalled();
-			expect(mockPage.goto).toHaveBeenCalledWith('https://example.com', { waitUntil: 'domcontentloaded' });
+			expect(mockPage.goto).toHaveBeenCalledWith('https://example.com', { waitUntil: 'load', timeout: 60_000 });
 			expect(handler.pages).toHaveLength(1);
 		});
 

@@ -1,10 +1,13 @@
 import logger from '../utils/logger.js';
-import { consolePrompt, waitTime } from '../utils/utils.js';
+import { consolePrompt, waitMsOrSkipJob, waitTime } from '../utils/utils.js';
 import { PageHandler } from '../classes/PageHandler.js';
-import { findBtnByTxt, findDivByIdPrefix } from '../utils/parseUtils.js';
+import { findApplyLink, findBtnByTxt, waitForJobPageContent } from '../utils/parseUtils.js';
 import { writeAppMsg } from '../utils/aiUtils.js';
 import { TimeoutError } from 'puppeteer';
 import Job from '../classes/Job.js';
+
+/** Minimum time from starting navigation until we call the model to draft the message (overlaps with page load). */
+const PRE_MESSAGE_GENERATION_DELAY_MS = 15_000;
 
 /**
  * Handles message approval and application submission for a job.
@@ -19,8 +22,33 @@ export async function handleMessageApprovalAndApplication(
 	companyName: string,
 	bestJob: Job
 ): Promise<boolean> {
-	// generate a message to send to the company
-	let msg = await writeAppMsg(bestJob.desc);
+	const messageDelayDeadline = Date.now() + PRE_MESSAGE_GENERATION_DELAY_MS;
+	const openedJobPage = await pageHandler.openUrl(bestJob.link);
+
+	if (!openedJobPage) {
+		logger.log('error', '⚠️ Skipping this job application.');
+		return false;
+	}
+
+	const jobPage = pageHandler.getMostRecentPage();
+	await waitForJobPageContent(jobPage);
+
+	const remainingBeforeMessageMs = messageDelayDeadline - Date.now();
+	if (remainingBeforeMessageMs > 0) {
+		logger.log(
+			'info',
+			`⏳ Waiting ${Math.ceil(remainingBeforeMessageMs / 1000)}s before generating the application message (press S to skip this job)...\n`
+		);
+		const earlySkip = await waitMsOrSkipJob(remainingBeforeMessageMs);
+		if (earlySkip === 'skipped') {
+			logger.log('info', `⏭️ Skipping application to ${companyName}`);
+			await pageHandler.closeMostRecentPage();
+			return false;
+		}
+	}
+
+	const jdText = await jobPage.evaluate(() => document.body.innerText);
+	let msg = await writeAppMsg(jdText);
 	let approved = false;
 
 	// ask the user for approval before sending the message
@@ -40,7 +68,8 @@ export async function handleMessageApprovalAndApplication(
 			logger.log('debug', '✅ Message approved.');
 		} else if (userInput === 'S') {
 			logger.log('info', `⏭️ Skipping application to ${companyName}`);
-			return false; // Skip case
+			await pageHandler.closeMostRecentPage();
+			return false;
 		} else {
 			// make sure the message is not instantly approved if the user enters an empty message
 			approved = false;
@@ -48,24 +77,16 @@ export async function handleMessageApprovalAndApplication(
 		}
 	}
 
-	// apply with the now approved message
-	const openedJobPage = await pageHandler.openUrl(bestJob.link);
+	const applyLink = await findApplyLink(pageHandler.getMostRecentPage());
 
-	if (!openedJobPage) {
+	if (!applyLink) {
 		logger.log('error', '⚠️ Skipping this job application.');
+		await pageHandler.closeMostRecentPage();
 		return false;
 	}
 
-	await waitTime(10, 20);
-	const applyBtn = await findDivByIdPrefix(pageHandler.getMostRecentPage(), 'ApplyButton');
-
-	if (!applyBtn) {
-		logger.log('error', '⚠️ Skipping this job application.');
-		return false;
-	}
-
-	await applyBtn.click();
-	logger.log('debug', '✅ Clicked the apply button.');
+	await applyLink.click();
+	logger.log('debug', '✅ Clicked the apply link.');
 
 	// wait up to three seconds for a textarea element to appear in the dom
 	try {
@@ -78,6 +99,7 @@ export async function handleMessageApprovalAndApplication(
 		}
 
 		logger.log('error', '⚠️ Skipping this job application.');
+		await pageHandler.closeMostRecentPage();
 		return false;
 	}
 
@@ -86,6 +108,7 @@ export async function handleMessageApprovalAndApplication(
 
 	if (!textArea) {
 		logger.log('error', '⚠️ Could not find the application input box. Skipping this job application.');
+		await pageHandler.closeMostRecentPage();
 		return false;
 	}
 
@@ -96,6 +119,7 @@ export async function handleMessageApprovalAndApplication(
 
 	if (!sendBtn || typeof sendBtn.click !== 'function') {
 		logger.log('error', '⚠️ Could not find the send button. Skipping this job application.');
+		await pageHandler.closeMostRecentPage();
 		return false;
 	}
 
@@ -105,7 +129,7 @@ export async function handleMessageApprovalAndApplication(
 	try {
 		await pageHandler
 			.getMostRecentPage()
-			.waitForFunction((btn) => btn.innerText === 'Applied', { timeout: 5000 }, applyBtn);
+			.waitForFunction((btn) => btn.innerText === 'Applied', { timeout: 5000 }, applyLink);
 	} catch (error) {
 		if (error instanceof TimeoutError) {
 			logger.log('error', '⚠️ TimeoutError: The post-application page did not load within 5 seconds.');
@@ -114,10 +138,11 @@ export async function handleMessageApprovalAndApplication(
 		}
 
 		logger.log('error', '⚠️ Skipping this job application.');
+		await pageHandler.closeMostRecentPage();
 		return false;
 	}
 
 	logger.log('info', '🎉 Application sent successfully!');
-	pageHandler.closeMostRecentPage();
+	await pageHandler.closeMostRecentPage();
 	return true;
 }

@@ -24,6 +24,76 @@ export async function waitTime(rangeMin: number = 20, rangeMax: number = 30): Pr
 }
 
 /**
+ * Waits for a fixed duration (no-op if ms is zero or negative).
+ *
+ * @param ms - Milliseconds to wait
+ */
+export async function sleepMs(ms: number): Promise<void> {
+	if (ms <= 0) return;
+	await new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+export type WaitOrSkipResult = 'completed' | 'skipped';
+
+/**
+ * Waits up to `ms` while the JD page stays open. In an interactive TTY, press **S** to skip
+ * this job (same intent as the later approval prompt). Non-TTY (e.g. CI) behaves like {@link sleepMs}.
+ */
+export async function waitMsOrSkipJob(ms: number): Promise<WaitOrSkipResult> {
+	if (ms <= 0) return 'completed';
+
+	if (!process.stdin.isTTY) {
+		await sleepMs(ms);
+		return 'completed';
+	}
+
+	return new Promise<WaitOrSkipResult>((resolve) => {
+		let settled = false;
+		let timer: NodeJS.Timeout | undefined;
+
+		const cleanup = () => {
+			if (timer !== undefined) clearTimeout(timer);
+			try {
+				if (process.stdin.isTTY) process.stdin.setRawMode(false);
+			} catch {
+				/* ignore */
+			}
+			process.stdin.removeListener('data', onData);
+		};
+
+		const finish = (result: WaitOrSkipResult) => {
+			if (settled) return;
+			settled = true;
+			cleanup();
+			resolve(result);
+		};
+
+		const onData = (buf: Buffer) => {
+			const code = buf[0];
+			if (code === 3) {
+				if (settled) return;
+				settled = true;
+				cleanup();
+				process.exit(130);
+			}
+			const ch = String.fromCharCode(code ?? 0);
+			if (ch === 's' || ch === 'S') finish('skipped');
+		};
+
+		try {
+			process.stdin.setRawMode(true);
+		} catch {
+			void sleepMs(ms).then(() => finish('completed'));
+			return;
+		}
+
+		process.stdin.resume();
+		process.stdin.on('data', onData);
+		timer = setTimeout(() => finish('completed'), ms);
+	});
+}
+
+/**
  * Prompts the user for input in the console and returns the trimmed response.
  *
  * @param prompt - The prompt to display to the user.

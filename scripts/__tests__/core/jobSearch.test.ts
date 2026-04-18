@@ -166,14 +166,12 @@ describe('jobSearch', () => {
 		it('should handle scroll height increase and continue scrolling', async () => {
 			mockPageHandler.openUrl.mockResolvedValueOnce(true);
 			(utils.waitTime as any).mockResolvedValue(undefined);
-			// 1st: loading present, 2nd: scrollHeight, 3rd: scroll action, 4th: loading present, 5th: scrollHeight, 6th: scroll action, 7th: loading gone
+			// 1st: loading present, 2nd: height + scroll, 3rd: loading present, 4th: height + scroll, 5th: loading gone
 			mockPage.evaluate
 				.mockResolvedValueOnce(true) // loading present
-				.mockResolvedValueOnce(1000) // scrollHeightBefore
-				.mockResolvedValueOnce(undefined) // scroll action
+				.mockResolvedValueOnce(1000) // scrollHeightBefore (evaluate also scrolls)
 				.mockResolvedValueOnce(true) // loading present again
 				.mockResolvedValueOnce(1200) // scrollHeightBefore
-				.mockResolvedValueOnce(undefined) // scroll action
 				.mockResolvedValueOnce(false); // loading gone
 			// waitForFunction: height increases both times
 			mockPage.waitForFunction.mockResolvedValueOnce(true).mockResolvedValueOnce(true);
@@ -189,11 +187,10 @@ describe('jobSearch', () => {
 		it('should break if scroll height does not increase', async () => {
 			mockPageHandler.openUrl.mockResolvedValueOnce(true);
 			(utils.waitTime as any).mockResolvedValue(undefined);
-			// 1st: loading present, 2nd: scrollHeight, 3rd: scroll action
+			// 1st: loading present, 2nd: height + scroll
 			mockPage.evaluate
 				.mockResolvedValueOnce(true) // loading present
-				.mockResolvedValueOnce(1000) // scrollHeightBefore
-				.mockResolvedValueOnce(undefined); // scroll action
+				.mockResolvedValueOnce(1000); // scrollHeightBefore (evaluate also scrolls)
 			// waitForFunction: height does not increase
 			mockPage.waitForFunction.mockRejectedValueOnce(new Error('timeout'));
 			(parseUtils.filterJobLinks as any).mockResolvedValue({});
@@ -212,13 +209,10 @@ describe('jobSearch', () => {
 			mockPage.evaluate
 				.mockResolvedValueOnce(true) // loading present
 				.mockResolvedValueOnce(1000) // scrollHeightBefore
-				.mockResolvedValueOnce(undefined) // scroll action
 				.mockResolvedValueOnce(true) // loading present again
 				.mockResolvedValueOnce(1200) // scrollHeightBefore
-				.mockResolvedValueOnce(undefined) // scroll action
 				.mockResolvedValueOnce(true) // loading present again
 				.mockResolvedValueOnce(1400) // scrollHeightBefore
-				.mockResolvedValueOnce(undefined) // scroll action
 				.mockResolvedValueOnce(false); // loading gone
 			mockPage.waitForFunction.mockResolvedValueOnce(true).mockResolvedValueOnce(true).mockResolvedValueOnce(true);
 			(parseUtils.filterJobLinks as any).mockResolvedValue({});

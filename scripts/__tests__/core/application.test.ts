@@ -15,11 +15,13 @@ jest.mock('../../utils/logger', () => ({
 jest.mock('../../utils/utils', () => ({
 	consolePrompt: jest.fn(),
 	waitTime: jest.fn(),
+	waitMsOrSkipJob: jest.fn(() => Promise.resolve('completed')),
 }));
 
 jest.mock('../../utils/parseUtils', () => ({
 	findBtnByTxt: jest.fn(),
-	findDivByIdPrefix: jest.fn(),
+	findApplyLink: jest.fn(),
+	waitForJobPageContent: jest.fn().mockImplementation(() => Promise.resolve()),
 }));
 
 jest.mock('../../utils/aiUtils', () => ({
@@ -69,6 +71,8 @@ describe('application', () => {
 		mockPage = {
 			waitForSelector: jest.fn(),
 			$: jest.fn(),
+			$$: jest.fn(),
+			evaluate: jest.fn().mockImplementation(() => Promise.resolve('Live JD from page')),
 			waitForFunction: jest.fn(),
 		};
 		mockPageHandler = {
@@ -88,6 +92,21 @@ describe('application', () => {
 			const result = await handleMessageApprovalAndApplication(mockPageHandler, 'Test Company', mockJob);
 
 			expect(result).toBe(false);
+			expect(aiUtils.writeAppMsg).not.toHaveBeenCalled();
+			expect(mockPageHandler.closeMostRecentPage).not.toHaveBeenCalled();
+		});
+
+		it('should skip when user skips during pre-message wait', async () => {
+			(aiUtils.writeAppMsg as any).mockResolvedValue('Test message');
+			(utils.waitMsOrSkipJob as any).mockResolvedValueOnce('skipped');
+			mockPageHandler.openUrl.mockResolvedValueOnce(true);
+
+			const result = await handleMessageApprovalAndApplication(mockPageHandler, 'Test Company', mockJob);
+
+			expect(result).toBe(false);
+			expect(aiUtils.writeAppMsg).not.toHaveBeenCalled();
+			expect(utils.waitMsOrSkipJob).toHaveBeenCalled();
+			expect(mockPageHandler.closeMostRecentPage).toHaveBeenCalledTimes(1);
 		});
 
 		it('should return false if apply button not found', async () => {
@@ -95,11 +114,13 @@ describe('application', () => {
 			(utils.consolePrompt as any).mockResolvedValue('Y');
 			mockPageHandler.openUrl.mockResolvedValueOnce(true);
 			(utils.waitTime as any).mockResolvedValue(undefined);
-			(parseUtils.findDivByIdPrefix as any).mockResolvedValue(null);
+			(parseUtils.findApplyLink as any).mockResolvedValue(null);
 
 			const result = await handleMessageApprovalAndApplication(mockPageHandler, 'Test Company', mockJob);
 
 			expect(result).toBe(false);
+			expect(aiUtils.writeAppMsg).toHaveBeenCalledWith('Live JD from page');
+			expect(mockPageHandler.closeMostRecentPage).toHaveBeenCalledTimes(1);
 		});
 
 		it('should return false if textarea not found', async () => {
@@ -107,13 +128,14 @@ describe('application', () => {
 			(utils.consolePrompt as any).mockResolvedValue('Y');
 			mockPageHandler.openUrl.mockResolvedValueOnce(true);
 			(utils.waitTime as any).mockResolvedValue(undefined);
-			(parseUtils.findDivByIdPrefix as any).mockResolvedValue(mockApplyBtn);
+			(parseUtils.findApplyLink as any).mockResolvedValue(mockApplyBtn);
 			mockPage.waitForSelector.mockResolvedValue(undefined);
 			mockPage.$.mockResolvedValue(null);
 
 			const result = await handleMessageApprovalAndApplication(mockPageHandler, 'Test Company', mockJob);
 
 			expect(result).toBe(false);
+			expect(mockPageHandler.closeMostRecentPage).toHaveBeenCalledTimes(1);
 		});
 
 		it('should return false if send button not found', async () => {
@@ -121,7 +143,7 @@ describe('application', () => {
 			(utils.consolePrompt as any).mockResolvedValue('Y');
 			mockPageHandler.openUrl.mockResolvedValueOnce(true);
 			(utils.waitTime as any).mockResolvedValue(undefined);
-			(parseUtils.findDivByIdPrefix as any).mockResolvedValue(mockApplyBtn);
+			(parseUtils.findApplyLink as any).mockResolvedValue(mockApplyBtn);
 			mockPage.waitForSelector.mockResolvedValue(undefined);
 			mockPage.$.mockResolvedValue(mockTextArea);
 			(parseUtils.findBtnByTxt as any).mockResolvedValue(null);
@@ -129,6 +151,7 @@ describe('application', () => {
 			const result = await handleMessageApprovalAndApplication(mockPageHandler, 'Test Company', mockJob);
 
 			expect(result).toBe(false);
+			expect(mockPageHandler.closeMostRecentPage).toHaveBeenCalledTimes(1);
 		});
 
 		it('should return false if send button has no click function', async () => {
@@ -136,7 +159,7 @@ describe('application', () => {
 			(utils.consolePrompt as any).mockResolvedValue('Y');
 			mockPageHandler.openUrl.mockResolvedValueOnce(true);
 			(utils.waitTime as any).mockResolvedValue(undefined);
-			(parseUtils.findDivByIdPrefix as any).mockResolvedValue(mockApplyBtn);
+			(parseUtils.findApplyLink as any).mockResolvedValue(mockApplyBtn);
 			mockPage.waitForSelector.mockResolvedValue(undefined);
 			mockPage.$.mockResolvedValue(mockTextArea);
 			(parseUtils.findBtnByTxt as any).mockResolvedValue({}); // No click function
@@ -144,6 +167,7 @@ describe('application', () => {
 			const result = await handleMessageApprovalAndApplication(mockPageHandler, 'Test Company', mockJob);
 
 			expect(result).toBe(false);
+			expect(mockPageHandler.closeMostRecentPage).toHaveBeenCalledTimes(1);
 		});
 
 		it('should return false on timeout error during textarea wait', async () => {
@@ -151,12 +175,13 @@ describe('application', () => {
 			(utils.consolePrompt as any).mockResolvedValue('Y');
 			mockPageHandler.openUrl.mockResolvedValueOnce(true);
 			(utils.waitTime as any).mockResolvedValue(undefined);
-			(parseUtils.findDivByIdPrefix as any).mockResolvedValue(mockApplyBtn);
+			(parseUtils.findApplyLink as any).mockResolvedValue(mockApplyBtn);
 			mockPage.waitForSelector.mockRejectedValue(new TimeoutError('Timeout'));
 
 			const result = await handleMessageApprovalAndApplication(mockPageHandler, 'Test Company', mockJob);
 
 			expect(result).toBe(false);
+			expect(mockPageHandler.closeMostRecentPage).toHaveBeenCalledTimes(1);
 		});
 
 		it('should return false on timeout error during applied wait', async () => {
@@ -164,7 +189,7 @@ describe('application', () => {
 			(utils.consolePrompt as any).mockResolvedValue('Y');
 			mockPageHandler.openUrl.mockResolvedValueOnce(true);
 			(utils.waitTime as any).mockResolvedValue(undefined);
-			(parseUtils.findDivByIdPrefix as any).mockResolvedValue(mockApplyBtn);
+			(parseUtils.findApplyLink as any).mockResolvedValue(mockApplyBtn);
 			mockPage.waitForSelector.mockResolvedValue(undefined);
 			mockPage.$.mockResolvedValue(mockTextArea);
 			(parseUtils.findBtnByTxt as any).mockResolvedValue(mockSendBtn);
@@ -173,15 +198,19 @@ describe('application', () => {
 			const result = await handleMessageApprovalAndApplication(mockPageHandler, 'Test Company', mockJob);
 
 			expect(result).toBe(false);
+			expect(mockPageHandler.closeMostRecentPage).toHaveBeenCalledTimes(1);
 		});
 
 		it('should return false when user skips application', async () => {
 			(aiUtils.writeAppMsg as any).mockResolvedValue('Test message');
 			(utils.consolePrompt as any).mockResolvedValue('S');
+			mockPageHandler.openUrl.mockResolvedValueOnce(true);
 
 			const result = await handleMessageApprovalAndApplication(mockPageHandler, 'Test Company', mockJob);
 
 			expect(result).toBe(false);
+			expect(aiUtils.writeAppMsg).toHaveBeenCalledWith('Live JD from page');
+			expect(mockPageHandler.closeMostRecentPage).toHaveBeenCalledTimes(1);
 		});
 
 		it('should return true on successful application', async () => {
@@ -189,7 +218,7 @@ describe('application', () => {
 			(utils.consolePrompt as any).mockResolvedValue('Y');
 			mockPageHandler.openUrl.mockResolvedValueOnce(true);
 			(utils.waitTime as any).mockResolvedValue(undefined);
-			(parseUtils.findDivByIdPrefix as any).mockResolvedValue(mockApplyBtn);
+			(parseUtils.findApplyLink as any).mockResolvedValue(mockApplyBtn);
 			mockPage.waitForSelector.mockResolvedValue(undefined);
 			mockPage.$.mockResolvedValue(mockTextArea);
 			(parseUtils.findBtnByTxt as any).mockResolvedValue(mockSendBtn);
@@ -198,10 +227,11 @@ describe('application', () => {
 			const result = await handleMessageApprovalAndApplication(mockPageHandler, 'Test Company', mockJob);
 
 			expect(result).toBe(true);
+			expect(aiUtils.writeAppMsg).toHaveBeenCalledWith('Live JD from page');
 			expect(mockApplyBtn.click).toHaveBeenCalled();
 			expect(mockTextArea.type).toHaveBeenCalledWith('Test message');
 			expect(mockSendBtn.click).toHaveBeenCalled();
-			expect(mockPageHandler.closeMostRecentPage).toHaveBeenCalled();
+			expect(mockPageHandler.closeMostRecentPage).toHaveBeenCalledTimes(1);
 		});
 
 		it('should handle user entering new message', async () => {
@@ -212,7 +242,7 @@ describe('application', () => {
 				.mockResolvedValueOnce('Y'); // User approves new message
 			mockPageHandler.openUrl.mockResolvedValueOnce(true);
 			(utils.waitTime as any).mockResolvedValue(undefined);
-			(parseUtils.findDivByIdPrefix as any).mockResolvedValue(mockApplyBtn);
+			(parseUtils.findApplyLink as any).mockResolvedValue(mockApplyBtn);
 			mockPage.waitForSelector.mockResolvedValue(undefined);
 			mockPage.$.mockResolvedValue(mockTextArea);
 			(parseUtils.findBtnByTxt as any).mockResolvedValue(mockSendBtn);

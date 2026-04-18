@@ -11,13 +11,6 @@ jest.mock('../../utils/logger', () => ({
 		console.log(`[${level.toUpperCase()}] ${message}`);
 	}),
 }));
-jest.mock('../../openaiClient', () => ({
-	chat: {
-		completions: {
-			create: jest.fn(),
-		},
-	},
-}));
 jest.mock('../../utils/config', () => ({
 	getModelConfig: jest.fn(() => ({
 		appMethodModel: 'gpt-4o-mini',
