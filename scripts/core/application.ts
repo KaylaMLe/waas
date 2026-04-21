@@ -9,6 +9,11 @@ import Job from '../classes/Job.js';
 /** Minimum time from starting navigation until we call the model to draft the message (overlaps with page load). */
 const PRE_MESSAGE_GENERATION_DELAY_MS = 15_000;
 
+export type ApplicationFlowOptions = {
+	/** Listing is already open in the active tab (e.g. after a stale-link verify in stored mode). */
+	reuseCurrentJobPage?: boolean;
+};
+
 /**
  * Handles message approval and application submission for a job.
  *
@@ -20,14 +25,21 @@ const PRE_MESSAGE_GENERATION_DELAY_MS = 15_000;
 export async function handleMessageApprovalAndApplication(
 	pageHandler: PageHandler,
 	companyName: string,
-	bestJob: Job
+	bestJob: Job,
+	options?: ApplicationFlowOptions
 ): Promise<boolean> {
+	const reuse = options?.reuseCurrentJobPage === true;
 	const messageDelayDeadline = Date.now() + PRE_MESSAGE_GENERATION_DELAY_MS;
-	const openedJobPage = await pageHandler.openUrl(bestJob.link);
 
-	if (!openedJobPage) {
-		logger.log('error', '⚠️ Skipping this job application.');
-		return false;
+	if (!reuse) {
+		const openedJobPage = await pageHandler.openUrl(bestJob.link);
+
+		if (!openedJobPage) {
+			logger.log('error', '⚠️ Skipping this job application.');
+			return false;
+		}
+	} else {
+		logger.log('debug', '🔵 Reusing current job tab for application flow (skip navigation).');
 	}
 
 	const jobPage = pageHandler.getMostRecentPage();

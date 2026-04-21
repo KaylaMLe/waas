@@ -3,6 +3,7 @@ import { searchForJobs } from '../../core/jobSearch';
 import { PageHandler } from '../../classes/PageHandler';
 import * as utils from '../../utils/utils';
 import * as parseUtils from '../../utils/parseUtils';
+import { resetWaasRepositorySingletonForTests } from '../../db/waasRepository';
 
 // Mock dependencies
 jest.mock('../../utils/logger', () => ({
@@ -36,6 +37,8 @@ describe('jobSearch', () => {
 
 	beforeEach(() => {
 		jest.clearAllMocks();
+		process.env.SKIP_WAAS_DB = '1';
+		resetWaasRepositorySingletonForTests();
 		mockPage = {
 			evaluate: jest.fn(),
 			waitForFunction: jest.fn(),
@@ -44,6 +47,11 @@ describe('jobSearch', () => {
 			openUrl: jest.fn(),
 			getMostRecentPage: jest.fn().mockReturnValue(mockPage),
 		};
+	});
+
+	afterEach(() => {
+		delete process.env.SKIP_WAAS_DB;
+		resetWaasRepositorySingletonForTests();
 	});
 
 	describe('searchForJobs', () => {
@@ -125,7 +133,7 @@ describe('jobSearch', () => {
 			const result = await searchForJobs(mockPageHandler);
 
 			expect(result).toEqual(mockJobLinks);
-			expect(parseUtils.filterJobLinks).toHaveBeenCalledWith(mockPage);
+			expect(parseUtils.filterJobLinks).toHaveBeenCalledWith(mockPage, []);
 		});
 
 		it('should handle scroll count of 0', async () => {

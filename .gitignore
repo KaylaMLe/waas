@@ -1,4 +1,5 @@
 dist/
+.waas-data/
 coverage/
 node_modules
 .env

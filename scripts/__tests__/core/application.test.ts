@@ -213,6 +213,24 @@ describe('application', () => {
 			expect(mockPageHandler.closeMostRecentPage).toHaveBeenCalledTimes(1);
 		});
 
+		it('should skip navigation when reuseCurrentJobPage is true', async () => {
+			(aiUtils.writeAppMsg as any).mockResolvedValue('Test message');
+			(utils.consolePrompt as any).mockResolvedValue('Y');
+			(utils.waitTime as any).mockResolvedValue(undefined);
+			(parseUtils.findApplyLink as any).mockResolvedValue(mockApplyBtn);
+			mockPage.waitForSelector.mockResolvedValue(undefined);
+			mockPage.$.mockResolvedValue(mockTextArea);
+			(parseUtils.findBtnByTxt as any).mockResolvedValue(mockSendBtn);
+			mockPage.waitForFunction.mockResolvedValue(undefined);
+
+			const result = await handleMessageApprovalAndApplication(mockPageHandler, 'Test Company', mockJob, {
+				reuseCurrentJobPage: true,
+			});
+
+			expect(result).toBe(true);
+			expect(mockPageHandler.openUrl).not.toHaveBeenCalled();
+		});
+
 		it('should return true on successful application', async () => {
 			(aiUtils.writeAppMsg as any).mockResolvedValue('Test message');
 			(utils.consolePrompt as any).mockResolvedValue('Y');

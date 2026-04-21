@@ -147,6 +147,20 @@ describe('parseUtils', () => {
 			expect(result).toEqual({});
 		});
 
+		it('should merge APPLIED env with additional excluded directory keys', async () => {
+			const { filterJobLinks } = await import('../../utils/parseUtils.js');
+
+			process.env.APPLIED = 'EnvCo W24';
+			// @ts-ignore
+			mockPage.evaluate = jest.fn().mockResolvedValue({ jobsByCompany: {}, logs: [] });
+
+			await filterJobLinks(mockPage, ['DbCo S24']);
+
+			const passedArg = (mockPage.evaluate as jest.Mock).mock.calls[0][1] as string[];
+			expect(passedArg).toEqual(expect.arrayContaining(['EnvCo W24', 'DbCo S24']));
+			expect(passedArg.length).toBe(2);
+		});
+
 		it('should handle multiple applied companies', async () => {
 			const { filterJobLinks } = await import('../../utils/parseUtils.js');
 

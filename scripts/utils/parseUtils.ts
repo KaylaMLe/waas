@@ -58,21 +58,31 @@ export async function findApplyLink(page: Page): Promise<ElementHandle<HTMLAncho
 
 /**
  * Extracts and filters job links from the WorkAtAStartup directory page, grouped by company.
- * Filters out companies that have already been applied to based on the APPLIED environment variable.
+ * Filters out companies that have already been applied to based on the APPLIED environment variable,
+ * plus any additional directory keys (blocked, cooldown, recently processed blocks from the DB).
  *
  * @param page - The Puppeteer page object containing the WorkAtAStartup directory.
+ * @param additionalExcludedCompanyKeys - WAAS directory keys (`company + " " + batch`) excluded beyond `APPLIED`.
  * @returns A promise that resolves to a record with company names as keys and arrays of job URLs as values.
  */
-export async function filterJobLinks(page: Page): Promise<Record<string, string[]>> {
+export async function filterJobLinks(
+	page: Page,
+	additionalExcludedCompanyKeys: string[] = []
+): Promise<Record<string, string[]>> {
 	logger.log('debug', '🔵 Filtering job links...');
 
 	try {
 		// Get the APPLIED env variable and parse it into an array of company+batch strings
 		const appliedStr = process.env.APPLIED || '';
-		const appliedCompanies = appliedStr
-			.split(',')
-			.map((s) => s.trim())
-			.filter(Boolean);
+		const appliedCompanies = [
+			...new Set([
+				...appliedStr
+					.split(',')
+					.map((s) => s.trim())
+					.filter(Boolean),
+				...additionalExcludedCompanyKeys.map((s) => s.trim()).filter(Boolean),
+			]),
+		];
 
 		// Evaluate in the page context to extract job links grouped by company, checking APPLIED status first
 		const { jobsByCompany: companyJobs, logs: pageLogs } = await page.evaluate((appliedCompanies) => {

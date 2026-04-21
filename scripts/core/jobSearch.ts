@@ -2,6 +2,7 @@ import logger from '../utils/logger.js';
 import { consolePrompt, waitTime } from '../utils/utils.js';
 import { PageHandler } from '../classes/PageHandler.js';
 import { filterJobLinks } from '../utils/parseUtils.js';
+import { getWaasRepository } from '../db/waasRepository.js';
 import { Page } from 'puppeteer';
 
 /**
@@ -103,7 +104,9 @@ export async function searchForJobs(pageHandler: PageHandler): Promise<Record<st
 		await scrollAndWaitForLoading(page, scrollCount);
 	}
 
-	const jobLinks = await filterJobLinks(page);
+	const repo = getWaasRepository();
+	const dbExcluded = repo?.listDbDirectoryExcludedCompanyKeys() ?? [];
+	const jobLinks = await filterJobLinks(page, dbExcluded);
 
 	return jobLinks;
 }

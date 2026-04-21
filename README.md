@@ -1,189 +1,164 @@
 # WorkAtAStartup Automation Script
 
-This project automates the process of applying to jobs on [WorkAtAStartup](https://www.workatastartup.com). It uses Puppeteer to interact with the website, OpenAI's GPT-4o-mini model to generate application messages, and a custom workflow to streamline the job application process.
+This project automates the process of applying to jobs on [WorkAtAStartup](https://www.workatastartup.com). It uses Puppeteer to drive the site, OpenAI models (defaults in `.env.example`) to compare jobs and draft messages, a local **SQLite** database for persistence when enabled, and an interactive approve-or-edit step before anything is sent.
 
 ## Features
 
-- **Job Scraping**: Collects job listings from the WorkAtAStartup search page with support for infinite scrolling.
-- **Application Tracking**: Tracks companies you've already applied to using the `APPLIED` environment variable.
-- **AI-Powered Messaging**: Uses OpenAI's GPT model to generate personalized application messages.
-- **Job Comparison**: Automatically compares multiple jobs at the same company to find the best fit.
-- **Application Method Detection**: Identifies jobs that require different application methods (email, external links, etc.).
-- **User Approval**: Prompts the user to approve, modify, or skip the generated application message before submitting.
-- **Infinite Scrolling**: Configurable scrolling to load more job listings before processing.
-- **Error Handling**: Handles unexpected errors during the automation process and logs them for debugging.
+- **Job scraping**: Collects job listings from the WorkAtAStartup search page with optional infinite scrolling (`SCROLL_COUNT`).
+- **SQLite database** (default): Persists companies, job URLs (deduplicated), full job descriptions, and application history under `.waas-data/` (configurable). Supports post-application **cooldowns**, **permanent company blocks**, and skipping directory rows for companies whose block was **fully processed recently** (default 24 hours).
+- **Legacy mode**: Set `SKIP_WAAS_DB=1` to disable the database and rely only on the `APPLIED` env list for directory filtering (same behavior as older releases).
+- **Run modes**: `RUN_MODE=live` (directory search, then apply) or `RUN_MODE=stored` (walk saved jobs from the database; re-verifies stale listings before drafting a message).
+- **Application tracking**: `APPLIED` is still supported and is **merged** with database-driven exclusions (blocked, cooldown, recent block) when the DB is enabled.
+- **AI-powered messaging**: Uses your configured OpenAI model to draft application messages.
+- **Job comparison**: Compares multiple open jobs at the same company to pick the best fit.
+- **Application method detection**: Flags jobs that need a different path (email, external apply, etc.).
+- **User approval**: You approve, edit, or skip each message before it is sent.
+- **Logging**: Winston-based logs for debugging.
 
 ## Prerequisites
 
-- Node.js (v16 or later)
-- npm (v7 or later)
-- A Y Combinator account
-- An OpenAI API key
+- **Node.js** (v18 or later recommended; v16+ may work). [better-sqlite3](https://github.com/WiseLibs/better-sqlite3) includes native code and may require a C++ toolchain on some systems (for example `build-essential` on Debian/Ubuntu/Linux Mint).
+- **npm** (v7 or later)
+- A **Y Combinator** account (used to log in to WorkAtAStartup)
+- An **OpenAI API key** (for message generation, job comparison, and application-method checks)
+- A **resume PDF** on disk (`RESUME_PATH` in `.env`)
 
-## Installation
+## First-time setup
 
-1. Clone this repository:
+Do these steps once per machine (or after a fresh clone).
 
-   ```bash
+1. **Clone and enter the project**
+  ```bash
    git clone https://github.com/KaylaMLe/waas.git
    cd waas
-   ```
-
-2. Install dependencies:
-
-   ```bash
+  ```
+2. **Install dependencies**
+  ```bash
    npm install
-   ```
-
-3. **Configure environment variables**:
-
-   Create a `.env` file in the root directory and add your configuration:
-
-   ```env
-   SEARCH_URL="https://www.workatastartup.com/companies?..."
-   APPLIED="Comma-separated list of companies you've already applied to"
-   RESUME_PATH="Path to your resume PDF"
-   SCROLL_COUNT="5"
-
-   # Optional: Configure different AI models for each prompt type
-   APP_METHOD_MODEL="gpt-4o-mini"
-   JOB_COMPARE_MODEL="gpt-4o-mini"
-   APP_MESSAGE_MODEL="gpt-4o-mini"
-   ```
-
-4. **Set up your OpenAI API key**:
-
-   See the [OpenAI API Key Setup](#openai-api-key-setup) section below for detailed instructions on configuring your API key.
-
-5. **Create the AI Prompts File**:
-
-   Create a `prompts.yaml` file in the project root with your AI system prompts. See the [AI Prompts](#ai-prompts) section below for details and examples.
-
-6. Build the TypeScript files:
-   ```bash
+  ```
+   If `better-sqlite3` fails to compile, install your distro’s build tools, then run `npm install` again (on Mint/Ubuntu: `sudo apt install build-essential`).
+3. **Create your environment file**
+  Copy the example and edit values:
+   At minimum set `**OPENAI_API_KEY`** and `**RESUME_PATH**` (absolute path to your PDF). See [Environment variables](#environment-variables) and [OpenAI API Key Setup](#openai-api-key-setup) for the full list.
+4. **Create your prompts file**
+  ```bash
+   cp prompts.example.yaml prompts.yaml
+  ```
+   Edit `prompts.yaml` for your voice and criteria. Details: [AI Prompts](#ai-prompts).
+5. **Build TypeScript**
+  ```bash
    npm run build
-   ```
+  ```
+6. **Database (default)**
+  On first run with the database **enabled** (default), the app creates a SQLite file at the project root under the `.waas-data/` directory (default file name `waas.db`; set `WAAS_DB_PATH` to use another path). No separate migration command is required. To run **without** a database, set `SKIP_WAAS_DB=1` in `.env` and use `APPLIED` for directory skips only.
+
+You are now ready to [run the app](#usage).
 
 ## Usage
 
-1. **Start the script**:
+### Commands
 
-   ```bash
-   npm start
-   ```
 
-   Or use the convenient rebuild and restart command:
+| Command         | What it does                                                                                                                                                          |
+| --------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `npm run go`    | Runs `npm run build`, then starts the app (`node --env-file=.env ./dist/main.js`). **Use this for day-to-day runs** so `.env` is loaded and TypeScript is up to date. |
+| `npm start`     | Starts compiled `dist/main.js` with `.env`. Run `npm run build` first if you changed TypeScript.                                                                      |
+| `npm run build` | Compiles TypeScript to `dist/`.                                                                                                                                       |
+| `npm test`      | Runs the Jest suite.                                                                                                                                                  |
 
-   ```bash
-   npm run go
-   ```
 
-2. **Log in manually**:
+### `RUN_MODE`: live vs stored
 
-   - A non-headless browser will open the Y Combinator login page.
-   - Log in through the browser.
-   - Return to the console and press Enter when prompted.
+Set in `.env` (see `[.env.example](.env.example)`).
 
-3. **Search for jobs**:
+- `**RUN_MODE=live`** (default): Log in → open `SEARCH_URL` (or the default companies page) → scroll if configured → collect directory rows → for each company/job URL, scrape listings, compare roles when needed, then walk you through apply for in-app (“none”) methods. Writes to the SQLite DB when it is enabled (job rows, applications, company block timestamps, etc.).
+- `**RUN_MODE=stored**`: Does **not** crawl the directory. Reads eligible saved jobs from the database and runs the apply flow for each. **Requires** the database (do **not** set `SKIP_WAAS_DB=1`). Listings whose last verification is older than `**STALE_LINK_DAYS`** are opened in the browser **before** a new message is generated, so dead links are less likely to waste a draft.
 
-   - The script navigates to the job search page.
-   - If `SEARCH_URL` is not defined in your `.env`, you'll be asked whether to continue with the default URL.
+### Typical live run (interactive)
 
-4. **Scrape and filter job listings**:
+1. Run `**npm run go`** from the project root.
+2. **Log in**: A visible browser opens the Y Combinator login flow. Complete login, then return to the terminal and press Enter when prompted.
+3. **Search**: The script opens your `SEARCH_URL`, or the default [companies](https://www.workatastartup.com/companies) page if unset (you may get a console prompt to continue).
+4. **Directory filtering**: Companies listed in `**APPLIED`** plus any exclusions from the DB (blocked, cooldown, or “block fully processed” within `**COMPANY_BLOCK_RECENT_HOURS**`) are skipped when collecting links.
+5. **Per job**: Opens each listing (skips URLs already stored in a terminal state such as already applied on-site, gone, or previously applied through this tool), checks length and apply state, optionally records applications observed on the site.
+6. **Apply path**: For the best in-browser apply target, the model drafts a message; you **Y** / **N** (edit) / **S** (skip). On success, the DB records the application and updates the job row.
+7. **End of run**: Applied companies are printed; jobs that need a different application method are listed. The browser closes.
 
-   - The script collects job links from the page with optional infinite scrolling.
-   - Each job is examined to check:
-     - If the job description is long enough
-     - If you've already applied (via UI or the `APPLIED` environment variable)
+### After a run
 
-5. **Review jobs and generate applications**:
+- Keep using `**APPLIED`** if you like, or rely increasingly on the DB for cooldowns and history.
+- The default DB path is under `**.waas-data/**` (gitignored); back it up if you care about history.
+- Use `**RUN_MODE=stored**` when you want to work through a saved queue with stale-link checks.
 
-   - For each valid, unvisited job:
-     - The script uses OpenAI to generate a message.
-     - You'll be shown the message and asked:
-       ```
-       Do you want to send this message to [CompanyName]?
-       Type "Y" to approve, "N" to enter a different message, or "S" to skip:
-       ```
-     - If you select "N", you can type a custom message to send.
-     - If you select "S", the job will be skipped.
+### Running tests
 
-6. **Submit the application**:
+```bash
+npm test
+```
 
-   - The message is typed into the application form.
-   - The script attempts to click "Send" and confirms submission via the UI.
-   - The job is marked as applied.
+Uses the same `tsconfig` / Jest setup as CI; no browser is launched.
 
-7. **Completion**:
-   - After all jobs are processed, a summary of applied companies is printed to the console.
-   - Jobs requiring different application methods are listed separately.
-   - The browser is automatically closed.
-
-## File Structure
+## File structure
 
 ```
 .
-├── .env                 # Environment variables
-├── .gitignore           # Git ignore file
-├── LICENSE.txt          # License information
-├── main.ts              # Entry point of the application
-├── package.json         # Project metadata and scripts
-├── tsconfig.json        # TypeScript configuration
-├── tsconfig.tsbuildinfo # TypeScript build information
-└── scripts/             # Contains all the core modules
-    ├── classes/         # Classes representing core entities
-    │   ├── Company.ts   # Represents a company and its Jobs
-    │   ├── Job.ts       # Represents a job listing
-    │   └── PageHandler.ts # Puppeteer browser and page management
-    ├── core/            # Core application logic
-    │   ├── application.ts # Application submission workflow
-    │   ├── jobSearch.ts # Job discovery and filtering
-    │   ├── login.ts     # Authentication handling
-    │   └── mainStages.ts # Main workflow orchestration
-    ├── utils/           # Utility modules
-    │   ├── aiUtils.ts   # OpenAI integration for generating messages and job comparison
-    │   ├── config.ts    # Configuration management for AI models
-    │   ├── debugUtils.ts # Debugging utilities
-    │   ├── logger.ts    # Logging functionality
-    │   ├── parseUtils.ts # Functions for parsing web elements and infinite scrolling
-    │   ├── prompts.ts   # Loads and exports AI prompts from prompts.yaml
-    │   └── utils.ts     # Utility functions (e.g., wait time, console prompts)
-    ├── __tests__/       # Test files organized by module type
-    └── openAiClient.ts  # OpenAI client configuration
+├── .env                 # Your secrets and config (not committed)
+├── .env.example         # Documented defaults — copy to .env
+├── prompts.yaml         # Your AI system prompts (not committed by default)
+├── prompts.example.yaml # Example prompts — copy to prompts.yaml
+├── main.ts              # Entry point (live vs stored mode, login, then run)
+├── package.json
+├── tsconfig.json
+├── .waas-data/          # Created at runtime: SQLite DB (gitignored)
+└── scripts/
+    ├── classes/         # Company, Job, PageHandler
+    ├── core/
+    │   ├── application.ts    # In-browser apply + message approval
+    │   ├── jobSearch.ts      # Open search URL, scroll, filter links
+    │   ├── liveSearchApply.ts # Live directory run (scrape, compare, apply)
+    │   ├── storedApply.ts    # RUN_MODE=stored queue
+    │   ├── login.ts
+    │   └── mainStages.ts     # Re-exports core pieces for older imports
+    ├── db/
+    │   ├── waasDb.ts         # SQLite open + paths
+    │   └── waasRepository.ts # Schema, queries, directory exclusions
+    ├── utils/           # aiUtils, parseUtils, jobUrl, logger, etc.
+    ├── __tests__/
+    └── openAiClient.ts
 ```
 
-## Environment Variables
+## Environment variables
 
-A `.env.example` file is provided in the root directory with all available environment variables and example values. Copy it to a `.env` file and customize the values for your setup.
+Copy `[.env.example](.env.example)` to `.env` and adjust values. Below is a concise reference; the example file stays in sync with the code.
 
-### Required Variables
+### Required for normal runs
 
-- `RESUME_PATH`: The absolute path to a PDF of your resume.
+- `OPENAI_API_KEY`: API key for OpenAI (see [OpenAI API Key Setup](#openai-api-key-setup)). Can be omitted only for workflows that never load the client; the main app expects it.
+- `RESUME_PATH`: Absolute path to your resume PDF (used where the tooling reads your resume).
 
-### Optional Variables
+### Search and directory behavior
 
-- `SEARCH_URL`: The URL of a WorkAtAStartup search page.
-  - Opening up [the default search page](https://www.workatastartup.com/companies) and modifying the search criteria will modify the URL parameters. Copying and pasting the new URL into this environment variable will restrict the search to jobs that match these criteria.
-- `APPLIED`: A comma-separated list of companies you've already applied to.
-  - Each item should include both the company's name and batch indicator. (e.g., "Airbnb (W09)" instead of "Airbnb")
-- `SCROLL_COUNT`: Number of times to scroll down to load more job listings.
-  - Set to "inf" for infinite scrolling until no more results are available.
-  - Default is "0" (no scrolling).
-- `LOG_LEVEL`: Logging level for the application.
-  - Options: `error`, `warn`, `info`, `debug`, `dump`
-  - Default is `info`
+- `SEARCH_URL`: WorkAtAStartup search or companies URL. Tweak filters on [the companies page](https://www.workatastartup.com/companies), copy the URL, paste it here.
+- `APPLIED`: Comma-separated **directory keys** for companies to skip on the search page (same strings the site shows as company name + batch, for example `Acme W24`). When the database is enabled, this list is **merged** with DB exclusions; it is still useful for one-off overrides or migration from older setups.
+- `SCROLL_COUNT`: How many times to scroll to load more directory rows; `inf` loads until the page stops growing. Default `0`.
 
-### AI Model Configuration
+### Database and run mode
 
-You can configure different OpenAI models for each type of prompt. All default to `gpt-4o-mini`:
+- `SKIP_WAAS_DB`: Set to `1` to disable SQLite entirely (no `.waas-data/` writes; directory filtering uses only `APPLIED`).
+- `WAAS_DB_PATH`: Optional full path to the SQLite file. If unset, the default is a `waas.db` file inside `.waas-data/` under the project root.
+- `RUN_MODE`: `live` (default) = crawl `SEARCH_URL` then process jobs. `stored` = only process jobs already saved in the DB (**requires** the DB; do not set `SKIP_WAAS_DB=1`).
+- `COOLDOWN_MONTHS`: After an application is recorded for a company, that company’s directory row can be skipped for this many months (per-company override may be added in the DB later; defaults apply globally).
+- `COMPANY_BLOCK_RECENT_HOURS`: After a company’s directory **block** is fully processed in a live run, skip that company on the directory again for this many hours (default `24`). Reduces repeat work when you re-run search often.
+- `STALE_LINK_DAYS`: In `RUN_MODE=stored`, re-open and verify listings whose `last_verified_at` is older than this many days before calling the model.
 
-- `APP_METHOD_MODEL`: Model for analyzing job descriptions to detect application methods
-- `JOB_COMPARE_MODEL`: Model for comparing multiple jobs to find the best fit
-- `APP_MESSAGE_MODEL`: Model for generating application messages
+### Logging and models
+
+- `LOG_LEVEL`: `error`, `warn`, `info`, `debug`, or `dump` (default `info`).
+- `APP_METHOD_MODEL`, `JOB_COMPARE_MODEL`, `APP_MESSAGE_MODEL`: OpenAI model names per task (defaults `gpt-4o-mini` in `.env.example`).
 
 ## OpenAI API Key Setup
 
-The script requires an OpenAI API key to generate application messages and analyze job descriptions. Here's how to set it up:
+The app needs an OpenAI API key in practice for **live** and **stored** runs (message drafting, job comparison, application-method detection). Put it in `.env` as `OPENAI_API_KEY` before your first `npm run go`, unless you export it in the shell instead.
 
 ### Getting an OpenAI API Key
 
@@ -217,7 +192,9 @@ Set the API key as a system environment variable:
 
 ## AI Prompts
 
-The script uses three AI system prompts to generate application messages and analyze job descriptions. Create a `prompts.yaml` file in the project root with the following structure:
+If you followed [First-time setup](#first-time-setup), you already ran `cp prompts.example.yaml prompts.yaml`. Otherwise do that now.
+
+The script uses three AI system prompts. Your `prompts.yaml` in the project root should define:
 
 ### Required Prompt Keys
 
@@ -225,11 +202,7 @@ The script uses three AI system prompts to generate application messages and ana
 - `jobComparePrompt`: Compares multiple jobs at the same company to find the best fit for your profile
 - `appMsgPrompt`: Generates personalized application messages based on job descriptions
 
-A `prompts.example.yaml` file is provided in the root directory with example prompts for all three required keys. Copy it to `prompts.yaml` and customize the prompts for your needs:
-
-```bash
-cp prompts.example.yaml prompts.yaml
-```
+See `[prompts.example.yaml](prompts.example.yaml)` for a full starting template.
 
 ### Customization
 
@@ -242,12 +215,14 @@ You can modify these prompts to:
 
 ## Dependencies
 
-- [Puppeteer](https://github.com/puppeteer/puppeteer): For browser automation.
-- [OpenAI](https://github.com/openai/openai-node): For generating application messages and job comparison.
-- [TypeScript](https://www.typescriptlang.org/): For type-safe development.
-- [Winston](https://github.com/winstonjs/winston): For structured logging.
-- [js-yaml](https://github.com/nodeca/js-yaml): For parsing YAML prompt files.
-- [Jest](https://jestjs.io/): For comprehensive testing framework.
+- [Puppeteer](https://github.com/puppeteer/puppeteer): Browser automation.
+- [better-sqlite3](https://github.com/WiseLibs/better-sqlite3): Embedded SQLite (native addon; see [Prerequisites](#prerequisites)).
+- [@types/better-sqlite3](https://www.npmjs.com/package/@types/better-sqlite3): TypeScript typings for the driver (dev).
+- [OpenAI](https://github.com/openai/openai-node): Chat completions for messages, comparison, and application-method checks.
+- [TypeScript](https://www.typescriptlang.org/): Typed source compiled to `dist/`.
+- [Winston](https://github.com/winstonjs/winston): Logging.
+- [js-yaml](https://github.com/nodeca/js-yaml): Loading `prompts.yaml`.
+- [Jest](https://jestjs.io/): Tests (dev).
 
 ## License
 
