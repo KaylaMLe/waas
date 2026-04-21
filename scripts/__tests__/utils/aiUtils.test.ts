@@ -1,7 +1,18 @@
+jest.mock('../../openAiClient.js', () => ({
+	__esModule: true,
+	default: {
+		chat: {
+			completions: {
+				create: jest.fn(),
+			},
+		},
+	},
+}));
+
 import fs from 'fs';
 import logger from '../../utils/logger';
 import * as aiUtils from '../../utils/aiUtils';
-import openai from '../../openAiClient'; // Import the OpenAI client to mock
+import openai from '../../openAiClient.js';
 import Job from '../../classes/Job';
 
 jest.mock('fs');

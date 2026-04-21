@@ -121,7 +121,10 @@ describe('parseUtils', () => {
 
 			// @ts-ignore
 			mockPage.evaluate = jest.fn().mockResolvedValue({
-				'Test Company Batch 1': ['https://www.workatastartup.com/jobs/test-job'],
+				jobsByCompany: {
+					'Test Company Batch 1': ['https://www.workatastartup.com/jobs/test-job'],
+				},
+				logs: [],
 			});
 
 			const result = await filterJobLinks(mockPage);
@@ -136,6 +139,9 @@ describe('parseUtils', () => {
 
 			process.env.APPLIED = 'Test Company Batch 1';
 
+			// @ts-ignore
+			mockPage.evaluate = jest.fn().mockResolvedValue({ jobsByCompany: {}, logs: [] });
+
 			const result = await filterJobLinks(mockPage);
 
 			expect(result).toEqual({});
@@ -145,6 +151,9 @@ describe('parseUtils', () => {
 			const { filterJobLinks } = await import('../../utils/parseUtils.js');
 
 			process.env.APPLIED = 'Company A Batch 1, Company B Batch 2';
+
+			// @ts-ignore
+			mockPage.evaluate = jest.fn().mockResolvedValue({ jobsByCompany: {}, logs: [] });
 
 			const result = await filterJobLinks(mockPage);
 
@@ -166,33 +175,18 @@ describe('parseUtils', () => {
 			const { filterJobLinks } = await import('../../utils/parseUtils.js');
 
 			process.env.APPLIED = '';
+			document.body.innerHTML = `
+				<div class="directory-list">
+					<div class="bg-beige-lighter">
+						<a href="https://www.workatastartup.com/companies/onlyone">
+							<span class="company-name">SoloSpan</span>
+						</a>
+					</div>
+				</div>`;
 
-			// Mock company block with insufficient spans
-			const mockCompanyBlock = {
-				querySelectorAll: jest.fn().mockReturnValue([
-					{
-						querySelectorAll: jest.fn().mockReturnValue([
-							{
-								querySelectorAll: jest.fn().mockReturnValue([
-									{ textContent: 'Test Company' }, // Only one span
-								]),
-							},
-						]),
-					},
-				]),
-			};
-
-			mockPage.evaluate = jest.fn().mockImplementation((fn, appliedCompanies) => {
-				const mockDocument = {
-					querySelectorAll: jest.fn().mockReturnValue([mockCompanyBlock]),
-				};
-
-				const mockConsole = {
-					log: jest.fn(),
-				};
-
-				return (fn as Function).call({ document: mockDocument, console: mockConsole }, appliedCompanies);
-			});
+			mockPage.evaluate = jest.fn((fn: (applied: string[]) => unknown, appliedCompanies: string[]) =>
+				Promise.resolve(fn(appliedCompanies))
+			);
 
 			const result = await filterJobLinks(mockPage);
 
@@ -203,37 +197,69 @@ describe('parseUtils', () => {
 			const { filterJobLinks } = await import('../../utils/parseUtils.js');
 
 			process.env.APPLIED = '';
+			document.body.innerHTML = `
+				<div class="directory-list">
+					<div class="bg-beige-lighter">
+						<a href="https://www.workatastartup.com/companies/emptyco">
+							<span class="company-name">Empty Co</span><span class="batch">(W24)</span>
+						</a>
+					</div>
+				</div>`;
 
-			// Mock company block with no job links
-			const mockCompanyBlock = {
-				querySelectorAll: jest.fn().mockReturnValue([
-					{
-						querySelectorAll: jest.fn().mockReturnValue([
-							{
-								querySelectorAll: jest
-									.fn()
-									.mockReturnValue([{ textContent: 'Test Company' }, { textContent: 'Batch 1' }]),
-							},
-						]),
-					},
-				]),
-			};
-
-			mockPage.evaluate = jest.fn().mockImplementation((fn, appliedCompanies) => {
-				const mockDocument = {
-					querySelectorAll: jest.fn().mockReturnValue([mockCompanyBlock]),
-				};
-
-				const mockConsole = {
-					log: jest.fn(),
-				};
-
-				return (fn as Function).call({ document: mockDocument, console: mockConsole }, appliedCompanies);
-			});
+			mockPage.evaluate = jest.fn((fn: (applied: string[]) => unknown, appliedCompanies: string[]) =>
+				Promise.resolve(fn(appliedCompanies))
+			);
 
 			const result = await filterJobLinks(mockPage);
 
 			expect(result).toEqual({});
+		});
+
+		it('parses Tailwind / React company cards (no div.job-name)', async () => {
+			const { filterJobLinks } = await import('../../utils/parseUtils.js');
+
+			process.env.APPLIED = '';
+			document.body.innerHTML = `
+				<div class="directory-list list-compact">
+					<div class="bg-beige-lighter mb-5 rounded pb-0">
+						<div class="text-2xl font-medium">
+							<a href="https://www.workatastartup.com/companies/dover" target="_target">
+								<span class="company-name hover:underline">Dover</span>
+								<span class="ml-2 text-sm text-gray-400">(S19)</span>
+							</a>
+						</div>
+						<div class="px-3 pb-3 pt-3">
+							<div class="mb-2 flex cursor-pointer flex-col sm:flex-row sm:items-center">
+								<div class="sm:w-9/10 w-full">
+									<div class="flex flex-wrap items-center gap-x-2">
+										<a href="https://www.workatastartup.com/jobs/93303" rel="noreferrer" class="font-medium">Marketing Leader</a>
+									</div>
+								</div>
+								<a href="https://www.workatastartup.com/jobs/93303" rel="noreferrer" class="rounded-md bg-brand">View job</a>
+							</div>
+							<div class="mb-2 flex cursor-pointer flex-col sm:flex-row sm:items-center">
+								<div class="sm:w-9/10 w-full">
+									<div class="flex flex-wrap items-center gap-x-2">
+										<a href="https://www.workatastartup.com/jobs/92813" class="font-medium">Startup Counsel</a>
+									</div>
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>`;
+
+			mockPage.evaluate = jest.fn((fn: (applied: string[]) => unknown, appliedCompanies: string[]) =>
+				Promise.resolve(fn(appliedCompanies))
+			);
+
+			const result = await filterJobLinks(mockPage);
+
+			expect(result).toEqual({
+				'Dover (S19)': [
+					'https://www.workatastartup.com/jobs/93303',
+					'https://www.workatastartup.com/jobs/92813',
+				],
+			});
 		});
 	});
 

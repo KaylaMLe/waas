@@ -75,73 +75,121 @@ export async function filterJobLinks(page: Page): Promise<Record<string, string[
 			.filter(Boolean);
 
 		// Evaluate in the page context to extract job links grouped by company, checking APPLIED status first
-		const companyJobs = await page.evaluate((appliedCompanies) => {
+		const { jobsByCompany: companyJobs, logs: pageLogs } = await page.evaluate((appliedCompanies) => {
+			const logs: { level: 'debug' | 'warn'; message: string }[] = [];
+			const pushLog = (level: 'debug' | 'warn', message: string) => {
+				logs.push({ level, message });
+			};
+
+			const isCompanyProfilePath = (pathname: string) => {
+				const segs = pathname.split('/').filter(Boolean);
+				return segs.length === 2 && segs[0] === 'companies';
+			};
+
+			const resolveCompanyAnchor = (block: Element): HTMLAnchorElement | null => {
+				const fromName = block.querySelector('span.company-name')?.closest('a');
+				if (fromName instanceof HTMLAnchorElement) return fromName;
+
+				const candidates = Array.from(block.querySelectorAll('a[href]')).filter((a): a is HTMLAnchorElement => {
+					try {
+						return (
+							a instanceof HTMLAnchorElement &&
+							isCompanyProfilePath(new URL(a.getAttribute('href') || '', document.baseURI).pathname)
+						);
+					} catch {
+						return false;
+					}
+				});
+				return candidates[0] ?? null;
+			};
+
+			const collectJobLinksForBlock = (block: Element): string[] => {
+				const seen = new Set<string>();
+				const out: string[] = [];
+
+				const considerHref = (raw: string | null) => {
+					if (!raw || !/\/jobs\/\d+/.test(raw)) return;
+					try {
+						const abs = new URL(raw, document.baseURI).href.replace(/[?#].*$/, '');
+						if (!seen.has(abs)) {
+							seen.add(abs);
+							out.push(abs);
+						}
+					} catch {
+						/* ignore invalid */
+					}
+				};
+
+				// Legacy compact list markup
+				for (const jobNameDiv of Array.from(block.querySelectorAll('div.job-name'))) {
+					for (const a of Array.from(jobNameDiv.querySelectorAll('a[href]'))) {
+						if (a instanceof HTMLAnchorElement) considerHref(a.getAttribute('href'));
+					}
+				}
+
+				// Current React / Tailwind list: job title + "View job" share the same URL — dedupe by href
+				if (out.length === 0) {
+					for (const a of Array.from(block.querySelectorAll('a[href]'))) {
+						if (a instanceof HTMLAnchorElement) considerHref(a.getAttribute('href'));
+					}
+				}
+
+				return out;
+			};
+
 			const jobsByCompany: Record<string, string[]> = {};
 			const companyBlocks = Array.from(document.querySelectorAll('div.directory-list > div:not(.loading)'));
-			console.log(`🔵 Found ${companyBlocks.length} company blocks`);
+			pushLog('debug', `🔵 Found ${companyBlocks.length} company blocks`);
 
 			for (const block of companyBlocks) {
-				console.log(`\n🔵 Processing block`);
+				pushLog('debug', '🔵 Processing block');
 
 				let company = '';
 				let batch = '';
-				const companyAnchors = block.querySelectorAll('a[href^="/companies/"]');
-
-				companyAnchors.forEach((a) => {
-					console.log(`🔵 Found company anchor:\n${a.outerHTML}`);
-				});
-
-				let companyAnchor = companyAnchors[2];
+				const companyAnchor = resolveCompanyAnchor(block);
 
 				if (companyAnchor) {
-					console.log(`🔵 Found company anchor:\n${companyAnchor.outerHTML}`);
+					pushLog('debug', `🔵 Found company anchor for ${companyAnchor.querySelector('img')?.getAttribute('alt')}`);
 					const spans = companyAnchor.querySelectorAll('span');
 
 					if (spans.length >= 2) {
 						company = spans[0].textContent?.trim() || '';
 						batch = spans[1].textContent?.trim() || '';
 					} else {
-						console.log(`❌ Not enough spans found in this block (found ${spans.length})`);
+						pushLog('warn', `❌ Not enough spans found in this block (found ${spans.length})`);
 					}
 				} else {
-					console.log(`❌ No company anchor found in this block`);
+					pushLog('warn', '❌ No company anchor found in this block');
 				}
 
 				if (!company || !batch) continue;
 
 				const companyBatch = `${company} ${batch}`;
-				console.log(`🔵 Found company: ${companyBatch}`);
+				pushLog('debug', `🔵 Found company: ${companyBatch}`);
 
 				// Check if this company has already been applied to before scraping job links
 				const isApplied = appliedCompanies.includes(companyBatch);
 
 				if (isApplied) {
-					console.log(`❌ Skipping APPLIED company: ${companyBatch}`);
+					pushLog('debug', `❌ Skipping APPLIED company: ${companyBatch}`);
 					continue; // Skip to next company block
 				}
 
-				console.log(`✅ Including jobs for: ${companyBatch}`);
+				pushLog('debug', `✅ Including jobs for: ${companyBatch}`);
 
-				// Only scrape job links for companies that haven't been applied to
-				// Get job links only from the job-name div to avoid duplicates from "View job" buttons
-				const jobNameDivs = Array.from(block.querySelectorAll('div.job-name'));
-				const jobLinks: string[] = [];
-
-				for (const jobNameDiv of jobNameDivs) {
-					const jobAnchor = jobNameDiv.querySelector('a[href^="https://www.workatastartup.com/jobs/"]');
-					if (jobAnchor) {
-						const link = jobAnchor.getAttribute('href') as string;
-						jobLinks.push(link);
-					}
-				}
+				const jobLinks = collectJobLinksForBlock(block);
 
 				if (jobLinks.length > 0) {
 					jobsByCompany[companyBatch] = jobLinks;
 				}
 			}
 
-			return jobsByCompany;
+			return { jobsByCompany, logs };
 		}, appliedCompanies);
+
+		for (const { level, message } of pageLogs) {
+			logger.log(level, message);
+		}
 
 		const totalJobs = Object.values(companyJobs).reduce((sum, links) => sum + links.length, 0);
 		logger.log(

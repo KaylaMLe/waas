@@ -17,7 +17,7 @@ const logger = createLogger({
 			)
 		}),
 		new transports.File({
-			filename: 'app.log',
+			filename: process.env.LOG_FILE_PATH || 'app.log',
 			format: format.combine(
 				format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),
 				format.printf(({ timestamp, level, message }) => `[${timestamp}] ${level.toUpperCase()}: ${message}`)

@@ -28,7 +28,7 @@ export async function searchForJobs(pageHandler: PageHandler): Promise<Record<st
 	const page = pageHandler.getMostRecentPage();
 	const scrollCountStr = process.env.SCROLL_COUNT || '0';
 	const scrollCount = scrollCountStr === 'inf' ? Infinity : parseInt(scrollCountStr, 10);
-	logger.log('debug', `🔵 Scrolling ${scrollCount === Infinity ? 'infinitely' : scrollCount} times.`);
+	logger.log('debug', `🔵 Scrolling ${scrollCount === Infinity ? 'infinitely many' : scrollCount} times.`);
 
 	const scrollAndWaitForLoading = async (page: Page, maxScrolls: number) => {
 		let scrollsCompleted = 0;
@@ -56,9 +56,7 @@ export async function searchForJobs(pageHandler: PageHandler): Promise<Record<st
 
 				const before = pageScrollHeight();
 
-				const loading =
-					(document.querySelector('div.directory-list div.loading') as HTMLElement | null) ??
-					(document.querySelector('div.loading') as HTMLElement | null);
+				const loading = document.querySelector('div.loading') as HTMLElement | null;
 
 				if (loading) {
 					loading.scrollIntoView({ block: 'end', inline: 'nearest' });

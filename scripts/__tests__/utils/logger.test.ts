@@ -1,35 +1,40 @@
 import fs from 'fs';
 import path from 'path';
-import logger from '../../utils/logger';
+import os from 'os';
+
+const logFilePath = path.join(os.tmpdir(), `waas-logger-test-${process.pid}.log`);
 
 describe('Logger', () => {
-	const logFilePath = path.resolve('app.log');
+	let logger: (typeof import('../../utils/logger.js'))['default'];
+
+	beforeAll(async () => {
+		process.env.LOG_FILE_PATH = logFilePath;
+		jest.resetModules();
+		const mod = await import('../../utils/logger.js');
+		logger = mod.default;
+	});
 
 	beforeEach(() => {
-		// Clear the log file before each test
 		if (fs.existsSync(logFilePath)) {
 			fs.unlinkSync(logFilePath);
 		}
 	});
 
 	afterAll(() => {
-		// Clean up the log file after all tests
+		delete process.env.LOG_FILE_PATH;
+		jest.resetModules();
 		if (fs.existsSync(logFilePath)) {
 			fs.unlinkSync(logFilePath);
 		}
 	});
 
-	it('should write log messages to the app.log file', (done) => {
+	it('should write log messages to the log file', async () => {
 		const testMessage = 'This is a test log message';
 
-		// Log a message
 		logger.info(testMessage);
 
-		// Wait briefly to ensure the log is written
-		setTimeout(() => {
-			const logFileContent = fs.readFileSync(logFilePath, 'utf-8');
-			expect(logFileContent).toContain(testMessage);
-			done();
-		}, 100);
+		await new Promise((r) => setTimeout(r, 150));
+		const logFileContent = fs.readFileSync(logFilePath, 'utf-8');
+		expect(logFileContent).toContain(testMessage);
 	});
 });
