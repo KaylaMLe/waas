@@ -311,4 +311,54 @@ export class WaasRepository {
 
 		return rows.filter((r) => !this.isCompanyCoolingDown(r.company_id, nowMs));
 	}
+
+	/**
+	 * Permanently block a company (WAAS directory `waas_key`) and delete all saved jobs and
+	 * application history rows for that company to free space. The company row remains with
+	 * `is_blocked = 1` so directory and stored queues skip it.
+	 */
+	blockCompanyAndPurgeSavedJobs(waasKey: string, blockedReason?: string | null): {
+		jobsRemoved: number;
+		applicationsRemoved: number;
+	} {
+		const now = new Date().toISOString();
+		const reason = blockedReason?.trim() || null;
+
+		const run = this.db.transaction(() => {
+			const row = this.db.prepare(`SELECT id FROM companies WHERE waas_key = ?`).get(waasKey) as
+				| { id: number }
+				| undefined;
+
+			let jobsRemoved = 0;
+			let applicationsRemoved = 0;
+
+			if (row) {
+				const appRes = this.db.prepare(`DELETE FROM applications WHERE company_id = ?`).run(row.id);
+				applicationsRemoved = appRes.changes;
+				const jobRes = this.db.prepare(`DELETE FROM jobs WHERE company_id = ?`).run(row.id);
+				jobsRemoved = jobRes.changes;
+				this.db
+					.prepare(
+						`UPDATE companies SET
+							is_blocked = 1,
+							blocked_reason = @reason,
+							last_block_fully_processed_at = NULL,
+							updated_at = @now
+						 WHERE id = @id`
+					)
+					.run({ reason, now, id: row.id });
+			} else {
+				this.db
+					.prepare(
+						`INSERT INTO companies (waas_key, is_blocked, blocked_reason, created_at, updated_at)
+						 VALUES (@waas_key, 1, @reason, @now, @now)`
+					)
+					.run({ waas_key: waasKey, reason, now });
+			}
+
+			return { jobsRemoved, applicationsRemoved };
+		});
+
+		return run();
+	}
 }

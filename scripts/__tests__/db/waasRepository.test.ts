@@ -71,4 +71,42 @@ describe('WaasRepository', () => {
 		expect(isTerminalListingState('tool_applied')).toBe(true);
 		expect(isTerminalListingState('open')).toBe(false);
 	});
+
+	it('blockCompanyAndPurgeSavedJobs removes jobs and applications and sets blocked', () => {
+		const cid = repo.upsertCompanyByWaasKey('PurgeCo W24');
+		const jid = repo.upsertJobStub(cid, 'https://www.workatastartup.com/jobs/42');
+		repo.updateJobAfterLiveScrape({
+			jobId: jid,
+			position: 'Eng',
+			jdText: 'long jd',
+			listingState: 'open',
+		});
+		repo.recordApplication(cid, jid, 'live_search');
+
+		const out = repo.blockCompanyAndPurgeSavedJobs('PurgeCo W24', 'test block');
+		expect(out.jobsRemoved).toBe(1);
+		expect(out.applicationsRemoved).toBe(1);
+
+		const jobCount = db.prepare(`SELECT COUNT(*) AS n FROM jobs WHERE company_id = ?`).get(cid) as { n: number };
+		expect(jobCount.n).toBe(0);
+		const row = db.prepare(`SELECT is_blocked, blocked_reason FROM companies WHERE id = ?`).get(cid) as {
+			is_blocked: number;
+			blocked_reason: string | null;
+		};
+		expect(row.is_blocked).toBe(1);
+		expect(row.blocked_reason).toBe('test block');
+
+		const keys = repo.listDbDirectoryExcludedCompanyKeys();
+		expect(keys).toContain('PurgeCo W24');
+	});
+
+	it('blockCompanyAndPurgeSavedJobs inserts blocked row when company was unknown', () => {
+		const out = repo.blockCompanyAndPurgeSavedJobs('NeverSeenCo S25', null);
+		expect(out.jobsRemoved).toBe(0);
+		expect(out.applicationsRemoved).toBe(0);
+		const row = db.prepare(`SELECT is_blocked FROM companies WHERE waas_key = ?`).get('NeverSeenCo S25') as {
+			is_blocked: number;
+		};
+		expect(row.is_blocked).toBe(1);
+	});
 });

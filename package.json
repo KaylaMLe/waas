@@ -4,6 +4,7 @@
 		"build": "npx tsc --build",
 		"go": "npm run build && npm run start",
 		"start": "node --env-file=.env ./dist/main.js",
+		"block-company": "npm run build && node --env-file=.env ./dist/scripts/cli/blockCompany.js",
 		"test": "jest --coverage"
 	},
 	"dependencies": {

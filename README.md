@@ -28,29 +28,46 @@ This project automates the process of applying to jobs on [WorkAtAStartup](https
 Do these steps once per machine (or after a fresh clone).
 
 1. **Clone and enter the project**
-  ```bash
+
+   ```bash
    git clone https://github.com/KaylaMLe/waas.git
    cd waas
-  ```
+   ```
+
 2. **Install dependencies**
-  ```bash
+
+   ```bash
    npm install
-  ```
+   ```
+
    If `better-sqlite3` fails to compile, install your distro’s build tools, then run `npm install` again (on Mint/Ubuntu: `sudo apt install build-essential`).
+
 3. **Create your environment file**
-  Copy the example and edit values:
-   At minimum set `**OPENAI_API_KEY`** and `**RESUME_PATH**` (absolute path to your PDF). See [Environment variables](#environment-variables) and [OpenAI API Key Setup](#openai-api-key-setup) for the full list.
+
+   Copy the example and edit values:
+
+   ```bash
+   cp .env.example .env
+   ```
+
+   At minimum set **`OPENAI_API_KEY`** and **`RESUME_PATH`** (absolute path to your PDF). See [Environment variables](#environment-variables) and [OpenAI API Key Setup](#openai-api-key-setup) for the full list.
+
 4. **Create your prompts file**
-  ```bash
+
+   ```bash
    cp prompts.example.yaml prompts.yaml
-  ```
+   ```
+
    Edit `prompts.yaml` for your voice and criteria. Details: [AI Prompts](#ai-prompts).
+
 5. **Build TypeScript**
-  ```bash
+
+   ```bash
    npm run build
-  ```
-6. **Database (default)**
-  On first run with the database **enabled** (default), the app creates a SQLite file at the project root under the `.waas-data/` directory (default file name `waas.db`; set `WAAS_DB_PATH` to use another path). No separate migration command is required. To run **without** a database, set `SKIP_WAAS_DB=1` in `.env` and use `APPLIED` for directory skips only.
+   ```
+
+6. **Database (default)**  
+   On first run with the database **enabled** (default), the app creates a SQLite file at the project root under the `.waas-data/` directory (default file name `waas.db`; set `WAAS_DB_PATH` to use another path). No separate migration command is required. To run **without** a database, set `SKIP_WAAS_DB=1` in `.env` and use `APPLIED` for directory skips only.
 
 You are now ready to [run the app](#usage).
 
@@ -58,37 +75,35 @@ You are now ready to [run the app](#usage).
 
 ### Commands
 
-
-| Command         | What it does                                                                                                                                                          |
-| --------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `npm run go`    | Runs `npm run build`, then starts the app (`node --env-file=.env ./dist/main.js`). **Use this for day-to-day runs** so `.env` is loaded and TypeScript is up to date. |
-| `npm start`     | Starts compiled `dist/main.js` with `.env`. Run `npm run build` first if you changed TypeScript.                                                                      |
-| `npm run build` | Compiles TypeScript to `dist/`.                                                                                                                                       |
-| `npm test`      | Runs the Jest suite.                                                                                                                                                  |
-
+| Command | What it does |
+|--------|----------------|
+| `npm run go` | Runs `npm run build`, then starts the app (`node --env-file=.env ./dist/main.js`). **Use this for day-to-day runs** so `.env` is loaded and TypeScript is up to date. |
+| `npm start` | Starts compiled `dist/main.js` with `.env`. Run `npm run build` first if you changed TypeScript. |
+| `npm run build` | Compiles TypeScript to `dist/`. |
+| `npm test` | Runs the Jest suite. |
 
 ### `RUN_MODE`: live vs stored
 
-Set in `.env` (see `[.env.example](.env.example)`).
+Set in `.env` (see [`.env.example`](.env.example)).
 
-- `**RUN_MODE=live`** (default): Log in → open `SEARCH_URL` (or the default companies page) → scroll if configured → collect directory rows → for each company/job URL, scrape listings, compare roles when needed, then walk you through apply for in-app (“none”) methods. Writes to the SQLite DB when it is enabled (job rows, applications, company block timestamps, etc.).
-- `**RUN_MODE=stored**`: Does **not** crawl the directory. Reads eligible saved jobs from the database and runs the apply flow for each. **Requires** the database (do **not** set `SKIP_WAAS_DB=1`). Listings whose last verification is older than `**STALE_LINK_DAYS`** are opened in the browser **before** a new message is generated, so dead links are less likely to waste a draft.
+- **`RUN_MODE=live`** (default): Log in → open `SEARCH_URL` (or the default companies page) → scroll if configured → collect directory rows → for each company/job URL, scrape listings, compare roles when needed, then walk you through apply for in-app (“none”) methods. Writes to the SQLite DB when it is enabled (job rows, applications, company block timestamps, etc.).
+- **`RUN_MODE=stored`**: Does **not** crawl the directory. Reads eligible saved jobs from the database and runs the apply flow for each. **Requires** the database (do **not** set `SKIP_WAAS_DB=1`). Listings whose last verification is older than **`STALE_LINK_DAYS`** are opened in the browser **before** a new message is generated, so dead links are less likely to waste a draft.
 
 ### Typical live run (interactive)
 
-1. Run `**npm run go`** from the project root.
+1. Run **`npm run go`** from the project root.
 2. **Log in**: A visible browser opens the Y Combinator login flow. Complete login, then return to the terminal and press Enter when prompted.
 3. **Search**: The script opens your `SEARCH_URL`, or the default [companies](https://www.workatastartup.com/companies) page if unset (you may get a console prompt to continue).
-4. **Directory filtering**: Companies listed in `**APPLIED`** plus any exclusions from the DB (blocked, cooldown, or “block fully processed” within `**COMPANY_BLOCK_RECENT_HOURS**`) are skipped when collecting links.
+4. **Directory filtering**: Companies listed in **`APPLIED`** plus any exclusions from the DB (blocked, cooldown, or “block fully processed” within **`COMPANY_BLOCK_RECENT_HOURS`**) are skipped when collecting links.
 5. **Per job**: Opens each listing (skips URLs already stored in a terminal state such as already applied on-site, gone, or previously applied through this tool), checks length and apply state, optionally records applications observed on the site.
 6. **Apply path**: For the best in-browser apply target, the model drafts a message; you **Y** / **N** (edit) / **S** (skip). On success, the DB records the application and updates the job row.
 7. **End of run**: Applied companies are printed; jobs that need a different application method are listed. The browser closes.
 
 ### After a run
 
-- Keep using `**APPLIED`** if you like, or rely increasingly on the DB for cooldowns and history.
-- The default DB path is under `**.waas-data/**` (gitignored); back it up if you care about history.
-- Use `**RUN_MODE=stored**` when you want to work through a saved queue with stale-link checks.
+- Keep using **`APPLIED`** if you like, or rely increasingly on the DB for cooldowns and history.
+- The default DB path is under **`.waas-data/`** (gitignored); back it up if you care about history.
+- Use **`RUN_MODE=stored`** when you want to work through a saved queue with stale-link checks.
 
 ### Running tests
 
@@ -97,6 +112,24 @@ npm test
 ```
 
 Uses the same `tsconfig` / Jest setup as CI; no browser is launched.
+
+### Blocking companies (permanent skip + free disk)
+
+To **never** process a company again and **delete all saved jobs and application rows** for that company (same WAAS directory key you use in `APPLIED`):
+
+```bash
+npm run block-company -- "Exact Company Name W24" "AnotherCo S25"
+```
+
+Optional human-readable note (stored in `companies.blocked_reason` only):
+
+```bash
+BLOCK_REASON="Not a fit" npm run block-company -- "SomeStartup W24"
+```
+
+Requires the SQLite database (**do not** set `SKIP_WAAS_DB=1`). After this, the company stays in the DB with `is_blocked = 1` so the [directory filter](scripts/utils/parseUtils.ts) and stored queue skip it, but **job descriptions and URLs** for that company are removed to save space.
+
+**Manual alternative** (if you prefer `sqlite3` CLI on your `WAAS_DB_PATH` file): delete `applications` and `jobs` for that `company_id`, then `UPDATE companies SET is_blocked = 1` — the npm script above does that in one transaction.
 
 ## File structure
 
@@ -129,7 +162,7 @@ Uses the same `tsconfig` / Jest setup as CI; no browser is launched.
 
 ## Environment variables
 
-Copy `[.env.example](.env.example)` to `.env` and adjust values. Below is a concise reference; the example file stays in sync with the code.
+Copy [`.env.example`](.env.example) to `.env` and adjust values. Below is a concise reference; the example file stays in sync with the code.
 
 ### Required for normal runs
 
@@ -202,7 +235,7 @@ The script uses three AI system prompts. Your `prompts.yaml` in the project root
 - `jobComparePrompt`: Compares multiple jobs at the same company to find the best fit for your profile
 - `appMsgPrompt`: Generates personalized application messages based on job descriptions
 
-See `[prompts.example.yaml](prompts.example.yaml)` for a full starting template.
+See [`prompts.example.yaml`](prompts.example.yaml) for a full starting template.
 
 ### Customization
 
